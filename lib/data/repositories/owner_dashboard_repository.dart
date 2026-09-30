@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/models/owner_dashboard_data.dart';
+import '../../domain/services/dashboard_payment_rules.dart';
 
 abstract interface class OwnerDashboardRepository {
   Future<OwnerDashboardData> load(String ownerId);
@@ -82,7 +83,8 @@ class SupabaseOwnerDashboardRepository implements OwnerDashboardRepository {
         .map(PaymentPreview.fromJson)
         .toList(growable: false);
 
-    final today = DateTime.now();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final monthStart = DateTime(today.year, today.month);
     final nextMonth = DateTime(today.year, today.month + 1);
 
@@ -106,25 +108,26 @@ class SupabaseOwnerDashboardRepository implements OwnerDashboardRepository {
       if (outstanding > 0) totalOutstanding += outstanding;
     }
 
-    final recentPayments = [...parsedPayments]..sort(
-        (a, b) => (b.dueDate ?? DateTime(1970))
-            .compareTo(a.dueDate ?? DateTime(1970)),
-      );
+    final recentPayments = parsedPayments.take(5).toList(growable: false);
 
     final upcomingPayments = parsedPayments.where((payment) {
-      final dueDate = payment.dueDate;
-      return dueDate != null &&
-          !dueDate.isBefore(today) &&
-          dueDate.isBefore(today.add(const Duration(days: 8))) &&
-          payment.remainingAmount > 0;
-    }).take(5).toList(growable: false);
+      return isUpcomingPayment(
+        payment.dueDate,
+        today: today,
+        remainingAmount: payment.remainingAmount,
+      );
+    }).toList()
+      ..sort((a, b) => (a.dueDate ?? DateTime(9999)).compareTo(b.dueDate ?? DateTime(9999)));
 
     final overduePayments = parsedPayments.where((payment) {
-      final dueDate = payment.dueDate;
-      return payment.remainingAmount > 0 &&
-          (payment.status == 'overdue' ||
-              (dueDate != null && dueDate.isBefore(today)));
-    }).take(5).toList(growable: false);
+      return isOverduePayment(
+        payment.dueDate,
+        today: today,
+        remainingAmount: payment.remainingAmount,
+        status: payment.status,
+      );
+    }).toList()
+      ..sort((a, b) => (a.dueDate ?? DateTime(1970)).compareTo(b.dueDate ?? DateTime(1970)));
 
     final roomsByStatus = <String, int>{
       'occupied': 0,
@@ -148,8 +151,8 @@ class SupabaseOwnerDashboardRepository implements OwnerDashboardRepository {
       paidThisMonth: paidThisMonth,
       totalOutstanding: totalOutstanding,
       recentPayments: recentPayments.take(5).toList(growable: false),
-      upcomingPayments: upcomingPayments,
-      overduePayments: overduePayments,
+      upcomingPayments: upcomingPayments.take(5).toList(growable: false),
+      overduePayments: overduePayments.take(5).toList(growable: false),
       activeMaintenance: maintenance
           .map(MaintenancePreview.fromJson)
           .toList(growable: false),
