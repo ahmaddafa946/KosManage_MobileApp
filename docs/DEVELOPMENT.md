@@ -7,7 +7,7 @@ The repository targets Flutter 3.47.5 / Dart 3.13+.
 On Windows:
 
     flutter doctor
-    flutter create --platforms=android,ios,web .
+    flutter create --platforms=android,ios,web --org id.kosmanage .
 
 The command above generates native platform folders using your installed Flutter SDK.
 

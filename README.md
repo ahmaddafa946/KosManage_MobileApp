@@ -42,9 +42,9 @@ Periksa:
     dart --version
     flutter doctor
 
-Untuk target Android, lanjutkan setup Android SDK/Android Studio lalu:
+Untuk target Android, pastikan Android SDK Command-line Tools (latest), Platform-Tools, dan Build-Tools terpasang melalui Android Studio → SDK Manager. Setelah itu validasi dengan:
 
-    flutter doctor --android-licenses
+    flutter doctor
 
 Buat platform folders dari root repository satu kali:
 
