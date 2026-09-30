@@ -15,7 +15,7 @@ class SupabaseProfileRepository implements ProfileRepository {
   Future<UserProfile> getCurrentProfile(String userId) async {
     final response = await _client
         .from('profiles')
-        .select('id,name,role,email')
+        .select('id,full_name,role,email')
         .eq('id', userId)
         .maybeSingle();
 
