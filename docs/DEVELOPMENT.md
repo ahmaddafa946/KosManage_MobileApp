@@ -2,7 +2,7 @@
 
 ## Local environment
 
-The repository targets Flutter 3.47.0 / Dart 3.13+.
+The repository targets Flutter 3.47.5 / Dart 3.13+.
 
 On Windows:
 

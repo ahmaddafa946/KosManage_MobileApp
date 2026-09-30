@@ -22,7 +22,7 @@ class ThemeModeController extends AsyncNotifier<ThemeMode> {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     final prefs = SharedPreferencesAsync();
-    final previous = state.valueOrNull ?? ThemeMode.system;
+    final previous = state.value ?? ThemeMode.system;
     state = AsyncData(mode);
 
     try {

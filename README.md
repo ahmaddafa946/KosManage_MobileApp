@@ -21,7 +21,7 @@ Repository ini sekarang memiliki:
 
 ## Stack
 
-- Flutter stable 3.47.0
+- Flutter stable 3.47.5
 - Dart 3.13+
 - supabase_flutter
 - flutter_riverpod

@@ -9,8 +9,13 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeState = ref.watch(themeModeProvider);
-    final currentMode =
-        themeState.valueOrNull ?? ThemeMode.system;
+    final currentMode = themeState.value ?? ThemeMode.system;
+
+    Future<void> setTheme(ThemeMode? mode) async {
+      if (mode != null) {
+        await ref.read(themeModeProvider.notifier).setThemeMode(mode);
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pengaturan')),
@@ -25,40 +30,26 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           Card(
-            child: Column(
-              children: [
-                RadioListTile<ThemeMode>(
-                  value: ThemeMode.system,
-                  groupValue: currentMode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref.read(themeModeProvider.notifier).setThemeMode(value);
-                    }
-                  },
-                  title: const Text('Ikuti sistem'),
-                  subtitle: const Text('Mengikuti mode terang/gelap perangkat.'),
-                ),
-                RadioListTile<ThemeMode>(
-                  value: ThemeMode.light,
-                  groupValue: currentMode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref.read(themeModeProvider.notifier).setThemeMode(value);
-                    }
-                  },
-                  title: const Text('Mode terang'),
-                ),
-                RadioListTile<ThemeMode>(
-                  value: ThemeMode.dark,
-                  groupValue: currentMode,
-                  onChanged: (value) {
-                    if (value != null) {
-                      ref.read(themeModeProvider.notifier).setThemeMode(value);
-                    }
-                  },
-                  title: const Text('Mode gelap'),
-                ),
-              ],
+            child: RadioGroup<ThemeMode>(
+              groupValue: currentMode,
+              onChanged: setTheme,
+              child: const Column(
+                children: [
+                  RadioListTile<ThemeMode>(
+                    value: ThemeMode.system,
+                    title: Text('Ikuti sistem'),
+                    subtitle: Text('Mengikuti mode terang/gelap perangkat.'),
+                  ),
+                  RadioListTile<ThemeMode>(
+                    value: ThemeMode.light,
+                    title: Text('Mode terang'),
+                  ),
+                  RadioListTile<ThemeMode>(
+                    value: ThemeMode.dark,
+                    title: Text('Mode gelap'),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
