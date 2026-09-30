@@ -15,7 +15,7 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String?;
-    final name = json['name'] as String?;
+    final name = json['full_name'] as String? ?? json['name'] as String?;
     final role = json['role'] as String?;
 
     if (id == null || name == null || role == null) {
