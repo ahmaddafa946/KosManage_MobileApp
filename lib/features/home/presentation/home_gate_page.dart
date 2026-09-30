@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../data/repositories/profile_repository.dart';
 import '../../../domain/models/app_role.dart';
@@ -10,20 +11,8 @@ import '../../owner/presentation/owner_shell_page.dart';
 import '../../tenant/presentation/tenant_shell_page.dart';
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  return SupabaseProfileRepository(
-    ref.read(authRepositoryProvider).currentSession == null
-        ? throw StateError('Tidak ada sesi login.')
-        : _supabaseClient(),
-  );
+  return SupabaseProfileRepository(Supabase.instance.client);
 });
-
-SupabaseProfileRepository _profileRepository() {
-  throw UnimplementedError();
-}
-
-dynamic _supabaseClient() {
-  return null;
-}
 
 final currentProfileProvider = FutureProvider<UserProfile>((ref) async {
   final session = ref.read(authRepositoryProvider).currentSession;
