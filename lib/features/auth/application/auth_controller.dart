@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../data/repositories/auth_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  throw StateError(
-    'authRepositoryProvider harus di-override atau Supabase diinisialisasi.',
-  );
+  return SupabaseAuthRepository(Supabase.instance.client);
 });
 
 final authControllerProvider =
