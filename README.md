@@ -17,7 +17,7 @@ Repository ini sekarang memiliki:
 - konfigurasi Supabase via compile-time defines
 - unit + widget test foundation
 - GitHub Actions CI
-- struktur untuk Android/iOS/web
+- struktur untuk Android/iOS/web; application ID Android menggunakan prefix provisional `id.kosmanage` saat platform folders digenerate
 
 ## Stack
 
@@ -48,7 +48,7 @@ Untuk target Android, lanjutkan setup Android SDK/Android Studio lalu:
 
 Buat platform folders dari root repository satu kali:
 
-    flutter create --platforms=android,ios,web .
+    flutter create --platforms=android,ios,web --org id.kosmanage .
 
 ## Supabase configuration
 
