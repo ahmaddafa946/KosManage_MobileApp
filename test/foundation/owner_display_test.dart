@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../lib/domain/services/owner_display.dart';
+import 'package:kosmanage_mobile_app/domain/services/owner_display.dart';
 
 void main() {
   test('formats Indonesian labels for room and payment status', () {
