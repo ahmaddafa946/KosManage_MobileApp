@@ -8,6 +8,7 @@ abstract interface class OwnerPaymentsRepository {
     String billingPeriod = '',
     String status = 'all',
     String method = 'all',
+    String? tenantId,
   });
 
   Future<OwnerPayment> createPayment(
@@ -63,6 +64,9 @@ class SupabaseOwnerPaymentsRepository implements OwnerPaymentsRepository {
     if (status != 'all') request = request.eq('status', status);
     if (method != 'all') {
       request = request.eq('payment_method', method);
+    }
+    if (tenantId != null) {
+      request = request.eq('tenant_id', tenantId);
     }
 
     final rows = await request.order('due_date', ascending: false);
