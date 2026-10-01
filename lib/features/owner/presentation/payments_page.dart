@@ -201,7 +201,6 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                         value: 'ewallet',
                         child: Text('E-Wallet'),
                       ),
-                      DropdownMenuItem(value: 'qris', child: Text('QRIS')),
                     ],
                     onChanged: (value) {
                       if (value != null) setState(() => _method = value);
