@@ -34,12 +34,13 @@ class SupabaseOwnerDashboardRepository implements OwnerDashboardRepository {
         .select('id,status')
         .eq('property_id', propertyId);
 
-    final activeTenants = await _client
+    final activeTenantsResponse = await _client
         .from('tenants')
         .select('id')
         .eq('property_id', propertyId)
         .eq('status', 'active')
         .count();
+    final activeTenants = activeTenantsResponse.count;
 
     final payments = await _client
         .from('payments')
