@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:kosmanage_mobile_app/domain/services/owner_report_calculator.dart';
+import 'package:kos_manage_mobile/domain/services/owner_report_calculator.dart';
 
 void main() {
   test('calculates financial summary from payment rows', () {
