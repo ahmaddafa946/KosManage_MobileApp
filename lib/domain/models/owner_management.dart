@@ -28,6 +28,23 @@ class OwnerRoom {
   final String? tenantName;
   final String? tenantId;
 
+  OwnerRoom copyWith({
+    String? tenantName,
+    String? tenantId,
+  }) {
+    return OwnerRoom(
+      id: id,
+      roomNumber: roomNumber,
+      floor: floor,
+      price: price,
+      status: status,
+      facilities: facilities,
+      notes: notes,
+      tenantName: tenantName ?? this.tenantName,
+      tenantId: tenantId ?? this.tenantId,
+    );
+  }
+
   factory OwnerRoom.fromJson(Map<String, dynamic> json) {
     final value = json['active_tenant'];
     final tenant = value is Map ? Map<String, dynamic>.from(value) : null;
