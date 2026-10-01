@@ -16,6 +16,7 @@ class ReportsPage extends ConsumerStatefulWidget {
 class _ReportsPageState extends ConsumerState<ReportsPage> {
   late final Future<OwnerProperty> _propertyFuture;
   Future<OwnerOperationalReport>? _operationalFuture;
+  Future<List<OwnerMaintenanceReport>>? _maintenanceFuture;
   Future<OwnerFinancialReport>? _financialFuture;
 
   int _mode = 0;
@@ -37,9 +38,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     _propertyFuture.then((property) {
       if (!mounted) return;
       setState(() {
-        _operationalFuture = ref
-            .read(ownerReportsRepositoryProvider)
-            .getOperationalReport(property.id);
+        final repository = ref.read(ownerReportsRepositoryProvider);
+        _operationalFuture = repository.getOperationalReport(property.id);
+        _maintenanceFuture = repository.getMaintenanceReports(property.id);
         _financialFuture = ref
             .read(ownerReportsRepositoryProvider)
             .getFinancialReport(property.id, months: _months);
@@ -51,9 +52,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     final property = await _propertyFuture;
     if (!mounted) return;
     setState(() {
-      _operationalFuture = ref
-          .read(ownerReportsRepositoryProvider)
-          .getOperationalReport(property.id);
+      final repository = ref.read(ownerReportsRepositoryProvider);
+      _operationalFuture = repository.getOperationalReport(property.id);
+      _maintenanceFuture = repository.getMaintenanceReports(property.id);
       _financialFuture = ref
           .read(ownerReportsRepositoryProvider)
           .getFinancialReport(property.id, months: _months);
@@ -137,6 +138,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
               if (_mode == 0)
                 _OperationalView(
                   future: _operationalFuture,
+                  maintenanceFuture: _maintenanceFuture,
                   status: _status,
                   statusOptions: _statusOptions,
                   nextStatuses: _nextStatuses,
@@ -169,6 +171,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
 class _OperationalView extends StatelessWidget {
   const _OperationalView({
     required this.future,
+    required this.maintenanceFuture,
     required this.status,
     required this.statusOptions,
     required this.nextStatuses,
@@ -177,6 +180,7 @@ class _OperationalView extends StatelessWidget {
   });
 
   final Future<OwnerOperationalReport>? future;
+  final Future<List<OwnerMaintenanceReport>>? maintenanceFuture;
   final String status;
   final List<(String, String)> statusOptions;
   final List<(String, String)> Function(String) nextStatuses;
@@ -204,67 +208,98 @@ class _OperationalView extends StatelessWidget {
         }
 
         final report = snapshot.data!;
-        final visible = status == 'all'
-            ? report.activeMaintenance
-            : report.activeMaintenance
-                  .where((item) => item.status == status)
-                  .toList(growable: false);
+        final maintenanceFuture = this.maintenanceFuture;
+        if (maintenanceFuture == null) {
+          return _ErrorState(
+            message: 'Laporan maintenance belum siap.',
+            onRetry: () {},
+          );
+        }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _OperationalKpis(report: report),
-            const SizedBox(height: 16),
-            Text(
-              'Laporan Maintenance',
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: statusOptions
-                    .map(
-                      (option) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(option.$2),
-                          selected: status == option.$1,
-                          onSelected: (_) => onStatusChanged(option.$1),
+        return FutureBuilder<List<OwnerMaintenanceReport>>(
+          future: maintenanceFuture,
+          builder: (context, maintenanceSnapshot) {
+            if (maintenanceSnapshot.connectionState != ConnectionState.done) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _OperationalKpis(report: report),
+                  const SizedBox(height: 16),
+                  const Center(child: CircularProgressIndicator()),
+                ],
+              );
+            }
+            if (maintenanceSnapshot.hasError) {
+              return _ErrorState(
+                message: _friendlyError(maintenanceSnapshot.error),
+                onRetry: () {},
+              );
+            }
+
+            final maintenance = maintenanceSnapshot.data ?? const <OwnerMaintenanceReport>[];
+            final visible = status == 'all'
+                ? maintenance
+                : maintenance
+                    .where((item) => item.status == status)
+                    .toList(growable: false);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _OperationalKpis(report: report),
+                const SizedBox(height: 16),
+                Text(
+                  'Laporan Maintenance',
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: statusOptions
+                        .map(
+                          (option) => Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(option.$2),
+                              selected: status == option.$1,
+                              onSelected: (_) => onStatusChanged(option.$1),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (visible.isEmpty)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(26),
+                      child: Center(
+                        child: Text(
+                          maintenance.isEmpty
+                              ? 'Belum ada laporan maintenance.'
+                              : 'Tidak ada laporan pada filter ini.',
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    )
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (visible.isEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(26),
-                  child: Center(
-                    child: Text(
-                      report.activeMaintenance.isEmpty
-                          ? 'Belum ada laporan maintenance aktif.'
-                          : 'Tidak ada laporan pada filter ini.',
-                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else
+                  ...visible.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _MaintenanceCard(
+                        report: item,
+                        actions: nextStatuses(item.status),
+                        onAdvance: (next) => onAdvance(item, next),
+                      ),
                     ),
                   ),
-                ),
-              )
-            else
-              ...visible.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _MaintenanceCard(
-                    report: item,
-                    actions: nextStatuses(item.status),
-                    onAdvance: (next) => onAdvance(item, next),
-                  ),
-                ),
-              ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
