@@ -5,8 +5,9 @@ import '../../../data/repositories/owner_dashboard_repository.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../../domain/models/owner_dashboard_data.dart';
 
-final ownerDashboardRepositoryProvider =
-    Provider<OwnerDashboardRepository>((ref) {
+final ownerDashboardRepositoryProvider = Provider<OwnerDashboardRepository>((
+  ref,
+) {
   return SupabaseOwnerDashboardRepository(Supabase.instance.client);
 });
 

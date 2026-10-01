@@ -25,6 +25,5 @@ bool isOverduePayment(
   final currentDay = _day(today);
   final dueDay = dueDate == null ? null : _day(dueDate);
 
-  return status == 'overdue' ||
-      (dueDay != null && dueDay.isBefore(currentDay));
+  return status == 'overdue' || (dueDay != null && dueDay.isBefore(currentDay));
 }

@@ -29,9 +29,8 @@ class OwnerDashboardPage extends ConsumerWidget {
           children: [
             Text(
               data.propertyName,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
             Text(
@@ -140,9 +139,8 @@ class _KpiCard extends StatelessWidget {
               value,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 3),
             Text(
@@ -215,10 +213,8 @@ class _PaymentSection extends StatelessWidget {
                               ? item.amountPaid
                               : item.amountDue,
                         ),
-                        style:
-                            Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                        style: Theme.of(context).textTheme.labelLarge
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
                   )
@@ -315,9 +311,8 @@ class _SectionCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -332,10 +327,7 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _DashboardError extends StatelessWidget {
-  const _DashboardError({
-    required this.message,
-    required this.onRetry,
-  });
+  const _DashboardError({required this.message, required this.onRetry});
   final String message;
   final VoidCallback onRetry;
 
@@ -369,10 +361,10 @@ class _DashboardError extends StatelessWidget {
 }
 
 String _currency(num amount) => NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    ).format(amount);
+  locale: 'id_ID',
+  symbol: 'Rp ',
+  decimalDigits: 0,
+).format(amount);
 
 String _date(DateTime? value) =>
     value == null ? '-' : DateFormat('dd MMM yyyy', 'id_ID').format(value);
@@ -381,8 +373,7 @@ String _label(String value) => value
     .replaceAll('_', ' ')
     .split(' ')
     .map(
-      (word) => word.isEmpty
-          ? word
-          : '${word[0].toUpperCase()}${word.substring(1)}',
+      (word) =>
+          word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}',
     )
     .join(' ');

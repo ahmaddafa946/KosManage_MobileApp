@@ -8,10 +8,7 @@ import '../../home/presentation/home_gate_page.dart';
 import '../../shared/presentation/feature_placeholder_page.dart';
 
 class TenantShellPage extends StatefulWidget {
-  const TenantShellPage({
-    super.key,
-    required this.profile,
-  });
+  const TenantShellPage({super.key, required this.profile});
 
   final UserProfile profile;
 
@@ -28,8 +25,7 @@ class _TenantShellPageState extends State<TenantShellPage> {
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard_rounded,
       title: 'Dashboard',
-      description:
-          'Ringkasan kamar, sewa, pembayaran, dan maintenance Anda.',
+      description: 'Ringkasan kamar, sewa, pembayaran, dan maintenance Anda.',
     ),
     (
       label: 'Kamar Saya',
@@ -112,9 +108,8 @@ class _TenantWelcome extends ConsumerWidget {
       children: [
         Text(
           'Halo, ${profile.name}',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(context).textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 6),
         Text(

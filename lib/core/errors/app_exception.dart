@@ -16,7 +16,9 @@ class AuthorizationException extends AppException {
 }
 
 class ValidationException extends AppException {
-  const ValidationException([super.message = 'Data yang dimasukkan belum valid.']);
+  const ValidationException([
+    super.message = 'Data yang dimasukkan belum valid.',
+  ]);
 }
 
 class NetworkException extends AppException {
@@ -28,7 +30,9 @@ class NotFoundException extends AppException {
 }
 
 class ConflictException extends AppException {
-  const ConflictException([super.message = 'Data bertentangan dengan kondisi saat ini.']);
+  const ConflictException([
+    super.message = 'Data bertentangan dengan kondisi saat ini.',
+  ]);
 }
 
 class ServerException extends AppException {
@@ -36,5 +40,7 @@ class ServerException extends AppException {
 }
 
 class UnknownException extends AppException {
-  const UnknownException([super.message = 'Terjadi kesalahan yang tidak diketahui.']);
+  const UnknownException([
+    super.message = 'Terjadi kesalahan yang tidak diketahui.',
+  ]);
 }

@@ -24,9 +24,8 @@ class SettingsPage extends ConsumerWidget {
         children: [
           Text(
             'Tampilan',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           Card(

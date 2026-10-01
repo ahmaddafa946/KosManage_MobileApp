@@ -10,10 +10,9 @@ class KosManageApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider).maybeWhen(
-          data: (mode) => mode,
-          orElse: () => ThemeMode.system,
-        );
+    final themeMode = ref
+        .watch(themeModeProvider)
+        .maybeWhen(data: (mode) => mode, orElse: () => ThemeMode.system);
 
     return MaterialApp.router(
       title: 'KosManage Mobile',

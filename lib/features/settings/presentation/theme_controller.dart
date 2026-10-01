@@ -4,8 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _themePreferenceKey = 'kosmanage_theme_mode';
 
-final themeModeProvider =
-    AsyncNotifierProvider<ThemeModeController, ThemeMode>(ThemeModeController.new);
+final themeModeProvider = AsyncNotifierProvider<ThemeModeController, ThemeMode>(
+  ThemeModeController.new,
+);
 
 class ThemeModeController extends AsyncNotifier<ThemeMode> {
   @override
@@ -26,14 +27,11 @@ class ThemeModeController extends AsyncNotifier<ThemeMode> {
     state = AsyncData(mode);
 
     try {
-      await prefs.setString(
-        _themePreferenceKey,
-        switch (mode) {
-          ThemeMode.light => 'light',
-          ThemeMode.dark => 'dark',
-          ThemeMode.system => 'system',
-        },
-      );
+      await prefs.setString(_themePreferenceKey, switch (mode) {
+        ThemeMode.light => 'light',
+        ThemeMode.dark => 'dark',
+        ThemeMode.system => 'system',
+      });
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
       state = AsyncData(previous);

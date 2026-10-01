@@ -4,18 +4,12 @@ class AppTheme {
   static const _seed = Color(0xFF0B6E69);
 
   static ThemeData light() => _base(
-        ColorScheme.fromSeed(
-          seedColor: _seed,
-          brightness: Brightness.light,
-        ),
-      );
+    ColorScheme.fromSeed(seedColor: _seed, brightness: Brightness.light),
+  );
 
   static ThemeData dark() => _base(
-        ColorScheme.fromSeed(
-          seedColor: _seed,
-          brightness: Brightness.dark,
-        ),
-      );
+    ColorScheme.fromSeed(seedColor: _seed, brightness: Brightness.dark),
+  );
 
   static ThemeData _base(ColorScheme scheme) {
     return ThemeData(
@@ -31,9 +25,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

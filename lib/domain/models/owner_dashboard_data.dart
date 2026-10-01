@@ -154,7 +154,9 @@ String _nestedText(dynamic value, String key) {
   if (value is Map<String, dynamic>) {
     return value[key] as String? ?? '-';
   }
-  if (value is List && value.isNotEmpty && value.first is Map<String, dynamic>) {
+  if (value is List &&
+      value.isNotEmpty &&
+      value.first is Map<String, dynamic>) {
     return (value.first as Map<String, dynamic>)[key] as String? ?? '-';
   }
   return '-';

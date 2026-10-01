@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../domain/models/user_profile.dart';
-import '../../shared/presentation/feature_placeholder_page.dart';
 import 'owner_dashboard_page.dart';
+import 'payments_page.dart';
+import 'reports_page.dart';
+import 'rooms_page.dart';
+import 'tenants_page.dart';
 
 class OwnerShellPage extends StatefulWidget {
-  const OwnerShellPage({
-    super.key,
-    required this.profile,
-  });
+  const OwnerShellPage({super.key, required this.profile});
 
   final UserProfile profile;
 
@@ -59,6 +59,21 @@ class _OwnerShellPageState extends State<OwnerShellPage> {
     ),
   ];
 
+  Widget _buildPage() {
+    switch (_index) {
+      case 1:
+        return const RoomsPage();
+      case 2:
+        return const TenantsPage();
+      case 3:
+        return const PaymentsPage();
+      case 4:
+        return const ReportsPage();
+      default:
+        return const OwnerDashboardPage();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = _items[_index];
@@ -74,13 +89,8 @@ class _OwnerShellPageState extends State<OwnerShellPage> {
           ),
         ],
       ),
-      body: _index == 0
-          ? const OwnerDashboardPage()
-          : FeaturePlaceholderPage(
-              title: item.title,
-              description: item.description,
-              icon: item.selectedIcon,
-            ),
+      body: _buildPage(),
+
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),

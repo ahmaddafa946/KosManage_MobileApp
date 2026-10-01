@@ -10,14 +10,8 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/home',
     routes: [
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginPage(),
-      ),
-      GoRoute(
-        path: '/home',
-        builder: (context, state) => const HomeGatePage(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(path: '/home', builder: (context, state) => const HomeGatePage()),
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsPage(),
