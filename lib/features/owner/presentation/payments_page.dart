@@ -474,25 +474,11 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButtonFormField<String>(
-                initialValue: _tenantId,
-                decoration: const InputDecoration(labelText: 'Penghuni'),
-                items: tenants
-                    .map(
-                      (tenant) => DropdownMenuItem(
-                        value: tenant.id,
-                        child: Text(
-                          tenant.name +
-                              (tenant.roomNumber == null
-                                  ? ''
-                                  : ' · Kamar ' + tenant.roomNumber!),
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _loading
-                    ? null
-                    : (value) => setState(() => _tenantId = value),
+              OwnerTenantDropdownField(
+                tenants: tenants,
+                value: _tenantId,
+                enabled: !_loading,
+                onChanged: (value) => setState(() => _tenantId = value),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -589,6 +575,46 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
           child: Text(_loading ? 'Menyimpan...' : 'Simpan'),
         ),
       ],
+    );
+  }
+}
+
+class OwnerTenantDropdownField extends StatelessWidget {
+  const OwnerTenantDropdownField({
+    super.key,
+    required this.tenants,
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final List<OwnerTenant> tenants;
+  final String? value;
+  final bool enabled;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Penghuni'),
+      items: tenants
+          .map(
+            (tenant) => DropdownMenuItem(
+              value: tenant.id,
+              child: Text(
+                tenant.name +
+                    (tenant.roomNumber == null
+                        ? ''
+                        : ' · Kamar ' + tenant.roomNumber!),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: enabled ? onChanged : null,
     );
   }
 }
