@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
-import '../../tenant/presentation/payment_form_page.dart';
 import '../application/owner_module_providers.dart';
 
 class PaymentsPage extends ConsumerStatefulWidget {
@@ -18,6 +17,19 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
   String _status = 'all';
   String _method = 'all';
   String _query = '';
+  late final TextEditingController _periodController;
+
+  @override
+  void initState() {
+    super.initState();
+    _periodController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _periodController.dispose();
+    super.dispose();
+  }
 
   Future<void> _openForm({OwnerPayment? payment}) async {
     final property = await ref.read(ownerPropertyProvider.future);
@@ -136,7 +148,7 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                     children: [
                       Expanded(
                         child: TextField(
-                          controller: TextEditingController(text: _period),
+                          controller: _periodController,
                           keyboardType: TextInputType.datetime,
                           decoration: const InputDecoration(
                             labelText: 'Periode',
@@ -148,7 +160,10 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                       const SizedBox(width: 8),
                       IconButton(
                         tooltip: 'Bersihkan periode',
-                        onPressed: () => setState(() => _period = ''),
+                        onPressed: () {
+                          _periodController.clear();
+                          setState(() => _period = '');
+                        },
                         icon: const Icon(Icons.clear),
                       ),
                     ],
@@ -158,11 +173,11 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _filter('Semua', 'all', FilterType.status),
-                        _filter('Belum', 'unpaid', FilterType.status),
-                        _filter('Sebagian', 'partial', FilterType.status),
-                        _filter('Lunas', 'paid', FilterType.status),
-                        _filter('Terlambat', 'overdue', FilterType.status),
+                        _filter('Semua', 'all'),
+                        _filter('Belum', 'unpaid'),
+                        _filter('Sebagian', 'partial'),
+                        _filter('Lunas', 'paid'),
+                        _filter('Terlambat', 'overdue'),
                       ],
                     ),
                   ),
@@ -191,6 +206,15 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                     onChanged: (value) {
                       if (value != null) setState(() => _method = value);
                     },
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: () => _openForm(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Catat Pembayaran'),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (items.isEmpty)
@@ -226,7 +250,7 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
     );
   }
 
-  Widget _filter(String label, String value, FilterType type) {
+  Widget _filter(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
@@ -323,8 +347,6 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
     );
   }
 }
-
-enum FilterType { status }
 
 class _PaymentFormDialog extends ConsumerStatefulWidget {
   const _PaymentFormDialog({
