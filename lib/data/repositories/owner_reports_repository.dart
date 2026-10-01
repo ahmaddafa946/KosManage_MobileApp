@@ -127,11 +127,15 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
     }
 
     final startPeriod = yyyymm(first);
+    final nextMonth = DateTime(now.year, now.month + 1, 1);
+    final endPeriod = yyyymm(nextMonth);
+
     final rows = await _client
         .from('payments')
         .select('billing_period,amount_due,amount_paid')
         .eq('property_id', propertyId)
         .gte('billing_period', startPeriod)
+        .lt('billing_period', endPeriod)
         .order('billing_period', ascending: true);
 
     final entries = (rows as List).cast<Map<String, dynamic>>().map(
