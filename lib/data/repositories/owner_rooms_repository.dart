@@ -52,7 +52,7 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
     var request = _client
         .from('rooms')
         .select(
-          '*, active_tenant:tenants!tenants_room_id_fkey(id,name,status)',
+          'id,property_id,room_number,floor,price,status,facilities,notes',
         )
         .eq('property_id', propertyId);
 
@@ -66,10 +66,31 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
       request = request.eq('status', status);
     }
 
-    final rows = await request.order('room_number');
-    return (rows as List)
+    final roomRows = await request.order('room_number');
+    final rooms = (roomRows as List)
         .cast<Map<String, dynamic>>()
         .map(OwnerRoom.fromJson)
+        .toList(growable: false);
+
+    final tenantRows = await _client
+        .from('tenants')
+        .select('id,name,room_id')
+        .eq('property_id', propertyId)
+        .eq('status', 'active');
+
+    final tenantsByRoom = <String, Map<String, dynamic>>{};
+    for (final tenant in (tenantRows as List).cast<Map<String, dynamic>>()) {
+      final roomId = tenant['room_id'] as String?;
+      if (roomId != null) tenantsByRoom[roomId] = tenant;
+    }
+
+    return rooms
+        .map(
+          (room) => room.copyWith(
+            tenantId: tenantsByRoom[room.id]?['id'] as String?,
+            tenantName: tenantsByRoom[room.id]?['name'] as String?,
+          ),
+        )
         .toList(growable: false);
   }
 
@@ -136,11 +157,23 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
     final row = await _client
         .from('rooms')
         .select(
-          '*, active_tenant:tenants!tenants_room_id_fkey(id,name,status)',
+          'id,property_id,room_number,floor,price,status,facilities,notes',
         )
         .eq('id', roomId)
         .single();
-    return OwnerRoom.fromJson(row);
+
+    final room = OwnerRoom.fromJson(row);
+    final tenant = await _client
+        .from('tenants')
+        .select('id,name')
+        .eq('room_id', roomId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+    return room.copyWith(
+      tenantId: tenant?['id'] as String?,
+      tenantName: tenant?['name'] as String?,
+    );
   }
 
   @override
