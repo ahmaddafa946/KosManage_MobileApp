@@ -127,6 +127,15 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: () => _openForm(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Tambah Kamar'),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   if (items.isEmpty)
                     _EmptyState(
