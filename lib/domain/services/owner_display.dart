@@ -91,10 +91,10 @@ String maintenancePriorityLabel(String priority) {
 }
 
 String formatRupiah(num amount) => NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    ).format(amount);
+  locale: 'id_ID',
+  symbol: 'Rp ',
+  decimalDigits: 0,
+).format(amount);
 
 String formatDateId(String? value) {
   if (value == null || value.isEmpty) return '-';

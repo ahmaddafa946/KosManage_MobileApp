@@ -57,10 +57,7 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
         .eq('property_id', propertyId);
 
     if (query.trim().isNotEmpty) {
-      request = request.ilike(
-        'room_number',
-        '%' + query.trim() + '%',
-      );
+      request = request.ilike('room_number', '%' + query.trim() + '%');
     }
     if (status != 'all') {
       request = request.eq('status', status);
@@ -122,10 +119,7 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
         .toList(growable: false);
   }
 
-  Future<void> _syncFacilities(
-    String roomId,
-    List<String> targetIds,
-  ) async {
+  Future<void> _syncFacilities(String roomId, List<String> targetIds) async {
     final current = await getRoomFacilityIds(roomId);
     final currentSet = current.toSet();
     final targetSet = targetIds.toSet();
@@ -142,14 +136,11 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
     }
 
     if (add.isNotEmpty) {
-      await _client.from('room_facilities').insert(
-        add
-            .map((id) => {
-                  'room_id': roomId,
-                  'facility_id': id,
-                })
-            .toList(),
-      );
+      await _client
+          .from('room_facilities')
+          .insert(
+            add.map((id) => {'room_id': roomId, 'facility_id': id}).toList(),
+          );
     }
   }
 
@@ -186,14 +177,18 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
     required String? notes,
     required List<String> facilityIds,
   }) async {
-    final row = await _client.from('rooms').insert({
-      'property_id': propertyId,
-      'room_number': roomNumber.trim(),
-      'floor': floor,
-      'price': price,
-      'status': status,
-      'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
-    }).select().single();
+    final row = await _client
+        .from('rooms')
+        .insert({
+          'property_id': propertyId,
+          'room_number': roomNumber.trim(),
+          'floor': floor,
+          'price': price,
+          'status': status,
+          'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
+        })
+        .select()
+        .single();
 
     final roomId = row['id'] as String;
     if (facilityIds.isNotEmpty) {
@@ -212,13 +207,18 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
     required String? notes,
     required List<String> facilityIds,
   }) async {
-    await _client.from('rooms').update({
-      'room_number': roomNumber.trim(),
-      'floor': floor,
-      'price': price,
-      'status': status,
-      'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
-    }).eq('id', roomId).select().single();
+    await _client
+        .from('rooms')
+        .update({
+          'room_number': roomNumber.trim(),
+          'floor': floor,
+          'price': price,
+          'status': status,
+          'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
+        })
+        .eq('id', roomId)
+        .select()
+        .single();
 
     await _syncFacilities(roomId, facilityIds);
     return _reloadRoom(roomId);
@@ -230,19 +230,17 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
   }
 
   @override
-  Future<OwnerFacility> createFacility(
-    String propertyId,
-    String name,
-  ) async {
+  Future<OwnerFacility> createFacility(String propertyId, String name) async {
     final clean = name.trim();
     if (clean.isEmpty) {
       throw StateError('Nama fasilitas wajib diisi.');
     }
 
-    final row = await _client.from('facilities').insert({
-      'property_id': propertyId,
-      'name': clean,
-    }).select().single();
+    final row = await _client
+        .from('facilities')
+        .insert({'property_id': propertyId, 'name': clean})
+        .select()
+        .single();
 
     return OwnerFacility.fromJson(row);
   }

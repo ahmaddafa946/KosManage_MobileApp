@@ -9,10 +9,7 @@ import 'rooms_page.dart';
 import 'tenants_page.dart';
 
 class OwnerShellPage extends StatefulWidget {
-  const OwnerShellPage({
-    super.key,
-    required this.profile,
-  });
+  const OwnerShellPage({super.key, required this.profile});
 
   final UserProfile profile;
 

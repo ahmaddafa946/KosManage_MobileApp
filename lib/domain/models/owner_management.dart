@@ -28,10 +28,7 @@ class OwnerRoom {
   final String? tenantName;
   final String? tenantId;
 
-  OwnerRoom copyWith({
-    String? tenantName,
-    String? tenantId,
-  }) {
+  OwnerRoom copyWith({String? tenantName, String? tenantId}) {
     return OwnerRoom(
       id: id,
       roomNumber: roomNumber,
@@ -177,7 +174,9 @@ class OwnerPayment {
   factory OwnerPayment.fromJson(Map<String, dynamic> json) {
     final tenantValue = json['tenant'];
     final roomValue = json['room'];
-    final tenant = tenantValue is Map ? Map<String, dynamic>.from(tenantValue) : null;
+    final tenant = tenantValue is Map
+        ? Map<String, dynamic>.from(tenantValue)
+        : null;
     final room = roomValue is Map ? Map<String, dynamic>.from(roomValue) : null;
     return OwnerPayment(
       id: json['id'] as String,
@@ -228,7 +227,9 @@ class OwnerMaintenanceReport {
     final roomValue = json['room'];
     final tenantValue = json['tenant'];
     final room = roomValue is Map ? Map<String, dynamic>.from(roomValue) : null;
-    final tenant = tenantValue is Map ? Map<String, dynamic>.from(tenantValue) : null;
+    final tenant = tenantValue is Map
+        ? Map<String, dynamic>.from(tenantValue)
+        : null;
     return OwnerMaintenanceReport(
       id: json['id'] as String,
       title: json['title'] as String? ?? '-',

@@ -32,9 +32,7 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
       builder: (context) => AlertDialog(
         title: Text('Hapus kamar ' + room.roomNumber + '?'),
         content: Text(
-          room.tenantName != null
-              ? 'Kamar ini masih memiliki penghuni aktif.'
-              : 'Data kamar akan dihapus dan tindakan ini tidak dapat dibatalkan.',
+          room.tenantName != null ? 'Kamar ini masih memiliki penghuni aktif.' : 'Data kamar akan dihapus dan tindakan ini tidak dapat dibatalkan.',
         ),
         actions: [
           TextButton(
@@ -60,9 +58,8 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
   }
 
   void _showError(Object error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_friendlyError(error))),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(_friendlyError(error))));
   }
 
   @override
@@ -82,11 +79,7 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
         }
         final property = propertySnapshot.data!;
         return FutureBuilder<List<OwnerRoom>>(
-          future: repo.getRooms(
-            property.id,
-            query: _query,
-            status: _status,
-          ),
+          future: repo.getRooms(property.id, query: _query, status: _status),
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
@@ -196,9 +189,8 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                   Expanded(
                     child: Text(
                       'Kamar ' + room.roomNumber,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
                   _StatusBadge(label: roomStatusLabel(room.status)),
@@ -208,14 +200,8 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                 label: 'Harga',
                 value: formatRupiah(room.price) + ' / bulan',
               ),
-              _InfoLine(
-                label: 'Lantai',
-                value: room.floor?.toString() ?? '-',
-              ),
-              _InfoLine(
-                label: 'Penghuni',
-                value: room.tenantName ?? 'Kosong',
-              ),
+              _InfoLine(label: 'Lantai', value: room.floor?.toString() ?? '-'),
+              _InfoLine(label: 'Penghuni', value: room.tenantName ?? 'Kosong'),
               _InfoLine(
                 label: 'Fasilitas',
                 value: room.facilities?.trim().isNotEmpty == true
@@ -285,9 +271,7 @@ class _RoomFormDialogState extends ConsumerState<_RoomFormDialog> {
     final room = widget.room;
     _number = TextEditingController(text: room?.roomNumber ?? '');
     _floor = TextEditingController(text: room?.floor?.toString() ?? '');
-    _price = TextEditingController(
-      text: room?.price.toStringAsFixed(0) ?? '',
-    );
+    _price = TextEditingController(text: room?.price.toStringAsFixed(0) ?? '');
     _notes = TextEditingController(text: room?.notes ?? '');
     _status = room?.status ?? 'available';
     _loadFacilities();
@@ -298,9 +282,7 @@ class _RoomFormDialogState extends ConsumerState<_RoomFormDialog> {
       final repo = ref.read(ownerRoomsRepositoryProvider);
       final facilities = await repo.getFacilities(widget.property.id);
       if (widget.room != null) {
-        _selected.addAll(
-          await repo.getRoomFacilityIds(widget.room!.id),
-        );
+        _selected.addAll(await repo.getRoomFacilityIds(widget.room!.id));
       }
       if (mounted) {
         setState(() => _facilities = facilities);
@@ -394,9 +376,7 @@ class _RoomFormDialogState extends ConsumerState<_RoomFormDialog> {
             children: [
               TextField(
                 controller: _number,
-                decoration: const InputDecoration(
-                  labelText: 'Nomor Kamar',
-                ),
+                decoration: const InputDecoration(labelText: 'Nomor Kamar'),
               ),
               const SizedBox(height: 10),
               Row(
@@ -425,14 +405,8 @@ class _RoomFormDialogState extends ConsumerState<_RoomFormDialog> {
                 initialValue: _status,
                 decoration: const InputDecoration(labelText: 'Status'),
                 items: const [
-                  DropdownMenuItem(
-                    value: 'available',
-                    child: Text('Kosong'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'occupied',
-                    child: Text('Terisi'),
-                  ),
+                  DropdownMenuItem(value: 'available', child: Text('Kosong')),
+                  DropdownMenuItem(value: 'occupied', child: Text('Terisi')),
                   DropdownMenuItem(
                     value: 'maintenance',
                     child: Text('Maintenance'),
@@ -447,9 +421,8 @@ class _RoomFormDialogState extends ConsumerState<_RoomFormDialog> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Fasilitas',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               ..._facilities.map(
@@ -461,10 +434,10 @@ class _RoomFormDialogState extends ConsumerState<_RoomFormDialog> {
                   onChanged: _loading
                       ? null
                       : (checked) => setState(
-                            () => checked == true
-                                ? _selected.add(facility.id)
-                                : _selected.remove(facility.id),
-                          ),
+                          () => checked == true
+                              ? _selected.add(facility.id)
+                              : _selected.remove(facility.id),
+                        ),
                 ),
               ),
               Row(
@@ -556,15 +529,11 @@ class _RoomCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'Kamar ' + room.roomNumber,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                         ),
-                        _StatusBadge(
-                          label: roomStatusLabel(room.status),
-                        ),
+                        _StatusBadge(label: roomStatusLabel(room.status)),
                       ],
                     ),
                     const SizedBox(height: 5),
@@ -649,10 +618,7 @@ class _InfoLine extends StatelessWidget {
       children: [
         SizedBox(
           width: 90,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
         ),
         Expanded(child: Text(value)),
       ],
@@ -684,9 +650,8 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 4),
             Text(message, textAlign: TextAlign.center),

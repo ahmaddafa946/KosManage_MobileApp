@@ -9,19 +9,14 @@ abstract interface class OwnerReportsRepository {
     String status = 'all',
   });
 
-  Future<void> updateMaintenanceStatus(
-    String reportId,
-    String status,
-  );
+  Future<void> updateMaintenanceStatus(String reportId, String status);
 
   Future<OwnerFinancialReport> getFinancialReport(
     String propertyId, {
     required int months,
   });
 
-  Future<OwnerOperationalReport> getOperationalReport(
-    String propertyId,
-  );
+  Future<OwnerOperationalReport> getOperationalReport(String propertyId);
 }
 
 class OwnerFinancialReport {
@@ -99,10 +94,7 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
   }
 
   @override
-  Future<void> updateMaintenanceStatus(
-    String reportId,
-    String status,
-  ) async {
+  Future<void> updateMaintenanceStatus(String reportId, String status) async {
     await _client
         .from('maintenance_reports')
         .update({'status': status})
@@ -115,11 +107,7 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
     required int months,
   }) async {
     final now = DateTime.now();
-    final first = DateTime(
-      now.year,
-      now.month - (months - 1),
-      1,
-    );
+    final first = DateTime(now.year, now.month - (months - 1), 1);
     String yyyymm(DateTime value) {
       return value.year.toString().padLeft(4, '0') +
           '-' +
@@ -139,13 +127,12 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
         .order('billing_period', ascending: true);
 
     final entries = (rows as List).cast<Map<String, dynamic>>().map(
-          (row) => FinancialPaymentEntry(
-            billingPeriod:
-                row['billing_period'] as String? ?? startPeriod,
-            amountDue: row['amount_due'] as num? ?? 0,
-            amountPaid: row['amount_paid'] as num? ?? 0,
-          ),
-        );
+      (row) => FinancialPaymentEntry(
+        billingPeriod: row['billing_period'] as String? ?? startPeriod,
+        amountDue: row['amount_due'] as num? ?? 0,
+        amountPaid: row['amount_paid'] as num? ?? 0,
+      ),
+    );
 
     final grouped = <String, List<FinancialPaymentEntry>>{};
     for (final entry in entries) {
@@ -160,8 +147,7 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
         amountPaid: summary.totalPaid,
         outstanding: summary.outstanding,
       );
-    }).toList()
-      ..sort((a, b) => a.period.compareTo(b.period));
+    }).toList()..sort((a, b) => a.period.compareTo(b.period));
 
     final allEntries = <FinancialPaymentEntry>[];
     for (final rows in grouped.values) {
@@ -176,9 +162,7 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
   }
 
   @override
-  Future<OwnerOperationalReport> getOperationalReport(
-    String propertyId,
-  ) async {
+  Future<OwnerOperationalReport> getOperationalReport(String propertyId) async {
     final rooms = await _client
         .from('rooms')
         .select('id,status')
@@ -198,8 +182,7 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
       activeMaintenance: maintenance
           .where(
             (item) =>
-                item.status == 'submitted' ||
-                item.status == 'in_progress',
+                item.status == 'submitted' || item.status == 'in_progress',
           )
           .take(10)
           .toList(growable: false),

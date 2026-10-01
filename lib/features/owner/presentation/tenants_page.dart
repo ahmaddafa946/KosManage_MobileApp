@@ -21,10 +21,7 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
     if (!mounted) return;
     final saved = await showDialog<bool>(
       context: context,
-      builder: (_) => _TenantFormDialog(
-        property: property,
-        tenant: tenant,
-      ),
+      builder: (_) => _TenantFormDialog(property: property, tenant: tenant),
     );
     if (saved == true && mounted) setState(() {});
   }
@@ -40,10 +37,9 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
     if (date == null || !mounted) return;
 
     try {
-      await ref.read(ownerTenantsRepositoryProvider).deactivateTenant(
-            tenant.id,
-            endDate: _dateValue(date),
-          );
+      await ref
+          .read(ownerTenantsRepositoryProvider)
+          .deactivateTenant(tenant.id, endDate: _dateValue(date));
       setState(() {});
     } catch (error) {
       _showError(error);
@@ -82,9 +78,8 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
   }
 
   void _showError(Object error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_friendlyError(error))),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(_friendlyError(error))));
   }
 
   @override
@@ -104,11 +99,7 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
         }
         final property = propertySnapshot.data!;
         return FutureBuilder<List<OwnerTenant>>(
-          future: repo.getTenants(
-            property.id,
-            query: _query,
-            status: _status,
-          ),
+          future: repo.getTenants(property.id, query: _query, status: _status),
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
@@ -158,7 +149,8 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
                     _EmptyState(
                       icon: Icons.people_outline,
                       title: 'Belum ada penghuni',
-                      message: 'Tambahkan penghuni dan pilih kamar yang tersedia.',
+                      message:
+                          'Tambahkan penghuni dan pilih kamar yang tersedia.',
                       action: FilledButton.icon(
                         onPressed: () => _openForm(),
                         icon: const Icon(Icons.add),
@@ -217,9 +209,8 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
                   Expanded(
                     child: Text(
                       tenant.name,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
                   _Badge(label: tenantStatusLabel(tenant.status)),
@@ -285,10 +276,7 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
 }
 
 class _TenantFormDialog extends ConsumerStatefulWidget {
-  const _TenantFormDialog({
-    required this.property,
-    this.tenant,
-  });
+  const _TenantFormDialog({required this.property, this.tenant});
 
   final OwnerProperty property;
   final OwnerTenant? tenant;
@@ -378,7 +366,8 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
     final rent = num.tryParse(
       _rent.text.trim().replaceAll('.', '').replaceAll(',', ''),
     );
-    final deposit = num.tryParse(
+    final deposit =
+        num.tryParse(
           _deposit.text.trim().replaceAll('.', '').replaceAll(',', ''),
         ) ??
         0;
@@ -388,8 +377,7 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
         rent < 0 ||
         _start.text.trim().isEmpty) {
       setState(
-        () => _error =
-            'Nama, tanggal mulai, dan harga sewa wajib valid.',
+        () => _error = 'Nama, tanggal mulai, dan harga sewa wajib valid.',
       );
       return;
     }
@@ -531,9 +519,7 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
                     child: TextField(
                       controller: _deposit,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Deposit',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Deposit'),
                     ),
                   ),
                 ],
@@ -590,8 +576,9 @@ class _TenantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final countdown = rentalCountdown(tenant.endDate);
-    final initial =
-        tenant.name.isEmpty ? '?' : tenant.name.substring(0, 1).toUpperCase();
+    final initial = tenant.name.isEmpty
+        ? '?'
+        : tenant.name.substring(0, 1).toUpperCase();
 
     return Card(
       child: InkWell(
@@ -614,9 +601,7 @@ class _TenantCard extends StatelessWidget {
                             tenant.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                         ),
@@ -650,19 +635,13 @@ class _TenantCard extends StatelessWidget {
                   if (value == 'delete') onDelete();
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Text('Ubah'),
-                  ),
+                  const PopupMenuItem(value: 'edit', child: Text('Ubah')),
                   if (onDeactivate != null)
                     const PopupMenuItem(
                       value: 'checkout',
                       child: Text('Checkout'),
                     ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Hapus'),
-                  ),
+                  const PopupMenuItem(value: 'delete', child: Text('Hapus')),
                 ],
               ),
             ],
@@ -758,9 +737,8 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 5),
             Text(message, textAlign: TextAlign.center),

@@ -99,9 +99,7 @@ class SupabaseOwnerTenantsRepository implements OwnerTenantsRepository {
     return (rows as List)
         .cast<Map<String, dynamic>>()
         .map(OwnerRoom.fromJson)
-        .where(
-          (room) => room.status == 'available' || room.id == currentRoomId,
-        )
+        .where((room) => room.status == 'available' || room.id == currentRoomId)
         .toList(growable: false);
   }
 
@@ -130,21 +128,26 @@ class SupabaseOwnerTenantsRepository implements OwnerTenantsRepository {
     required num deposit,
     required String notes,
   }) async {
-    final row = await _client.from('tenants').insert({
-      'property_id': propertyId,
-      'room_id': roomId,
-      'name': name.trim(),
-      'phone': phone.trim().isEmpty ? null : phone.trim(),
-      'email': email.trim().isEmpty ? null : email.trim(),
-      'identity_number':
-          identityNumber.trim().isEmpty ? null : identityNumber.trim(),
-      'start_date': startDate,
-      'end_date': endDate.isEmpty ? null : endDate,
-      'rent_price': rentPrice,
-      'deposit': deposit == 0 ? null : deposit,
-      'status': 'active',
-      'notes': notes.trim().isEmpty ? null : notes.trim(),
-    }).select().single();
+    final row = await _client
+        .from('tenants')
+        .insert({
+          'property_id': propertyId,
+          'room_id': roomId,
+          'name': name.trim(),
+          'phone': phone.trim().isEmpty ? null : phone.trim(),
+          'email': email.trim().isEmpty ? null : email.trim(),
+          'identity_number': identityNumber.trim().isEmpty
+              ? null
+              : identityNumber.trim(),
+          'start_date': startDate,
+          'end_date': endDate.isEmpty ? null : endDate,
+          'rent_price': rentPrice,
+          'deposit': deposit == 0 ? null : deposit,
+          'status': 'active',
+          'notes': notes.trim().isEmpty ? null : notes.trim(),
+        })
+        .select()
+        .single();
 
     return _reloadTenant(row['id'] as String);
   }
@@ -163,19 +166,25 @@ class SupabaseOwnerTenantsRepository implements OwnerTenantsRepository {
     required num deposit,
     required String notes,
   }) async {
-    await _client.from('tenants').update({
-      'name': name.trim(),
-      'room_id': roomId,
-      'phone': phone.trim().isEmpty ? null : phone.trim(),
-      'email': email.trim().isEmpty ? null : email.trim(),
-      'identity_number':
-          identityNumber.trim().isEmpty ? null : identityNumber.trim(),
-      'start_date': startDate,
-      'end_date': endDate.isEmpty ? null : endDate,
-      'rent_price': rentPrice,
-      'deposit': deposit == 0 ? null : deposit,
-      'notes': notes.trim().isEmpty ? null : notes.trim(),
-    }).eq('id', tenantId).select().single();
+    await _client
+        .from('tenants')
+        .update({
+          'name': name.trim(),
+          'room_id': roomId,
+          'phone': phone.trim().isEmpty ? null : phone.trim(),
+          'email': email.trim().isEmpty ? null : email.trim(),
+          'identity_number': identityNumber.trim().isEmpty
+              ? null
+              : identityNumber.trim(),
+          'start_date': startDate,
+          'end_date': endDate.isEmpty ? null : endDate,
+          'rent_price': rentPrice,
+          'deposit': deposit == 0 ? null : deposit,
+          'notes': notes.trim().isEmpty ? null : notes.trim(),
+        })
+        .eq('id', tenantId)
+        .select()
+        .single();
 
     return _reloadTenant(tenantId);
   }
@@ -185,10 +194,12 @@ class SupabaseOwnerTenantsRepository implements OwnerTenantsRepository {
     String tenantId, {
     required String endDate,
   }) async {
-    await _client.from('tenants').update({
-      'status': 'inactive',
-      'end_date': endDate,
-    }).eq('id', tenantId).select().single();
+    await _client
+        .from('tenants')
+        .update({'status': 'inactive', 'end_date': endDate})
+        .eq('id', tenantId)
+        .select()
+        .single();
 
     return _reloadTenant(tenantId);
   }

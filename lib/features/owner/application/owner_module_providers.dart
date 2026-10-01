@@ -8,39 +8,28 @@ import '../../../data/repositories/owner_rooms_repository.dart';
 import '../../../data/repositories/owner_tenants_repository.dart';
 import '../../../domain/models/owner_management.dart';
 
-final ownerPropertyRepositoryProvider =
-    Provider<OwnerPropertyRepository>((ref) {
-  return SupabaseOwnerPropertyRepository(
-    Supabase.instance.client,
-  );
+final ownerPropertyRepositoryProvider = Provider<OwnerPropertyRepository>((
+  ref,
+) {
+  return SupabaseOwnerPropertyRepository(Supabase.instance.client);
 });
 
-final ownerRoomsRepositoryProvider =
-    Provider<OwnerRoomsRepository>((ref) {
-  return SupabaseOwnerRoomsRepository(
-    Supabase.instance.client,
-  );
+final ownerRoomsRepositoryProvider = Provider<OwnerRoomsRepository>((ref) {
+  return SupabaseOwnerRoomsRepository(Supabase.instance.client);
 });
 
-final ownerTenantsRepositoryProvider =
-    Provider<OwnerTenantsRepository>((ref) {
-  return SupabaseOwnerTenantsRepository(
-    Supabase.instance.client,
-  );
+final ownerTenantsRepositoryProvider = Provider<OwnerTenantsRepository>((ref) {
+  return SupabaseOwnerTenantsRepository(Supabase.instance.client);
 });
 
-final ownerPaymentsRepositoryProvider =
-    Provider<OwnerPaymentsRepository>((ref) {
-  return SupabaseOwnerPaymentsRepository(
-    Supabase.instance.client,
-  );
+final ownerPaymentsRepositoryProvider = Provider<OwnerPaymentsRepository>((
+  ref,
+) {
+  return SupabaseOwnerPaymentsRepository(Supabase.instance.client);
 });
 
-final ownerReportsRepositoryProvider =
-    Provider<OwnerReportsRepository>((ref) {
-  return SupabaseOwnerReportsRepository(
-    Supabase.instance.client,
-  );
+final ownerReportsRepositoryProvider = Provider<OwnerReportsRepository>((ref) {
+  return SupabaseOwnerReportsRepository(Supabase.instance.client);
 });
 
 final ownerPropertyProvider = FutureProvider<OwnerProperty>((ref) async {

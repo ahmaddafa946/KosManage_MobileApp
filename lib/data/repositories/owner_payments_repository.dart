@@ -100,18 +100,21 @@ class SupabaseOwnerPaymentsRepository implements OwnerPaymentsRepository {
     required String? paymentMethod,
     required String notes,
   }) async {
-    final row = await _client.from('payments').insert({
-      'property_id': propertyId,
-      'tenant_id': tenantId,
-      'billing_period': billingPeriod,
-      'due_date': dueDate,
-      'amount_due': amountDue,
-      'amount_paid': amountPaid,
-      'payment_date':
-          paymentDate?.isEmpty == true ? null : paymentDate,
-      'payment_method': paymentMethod,
-      'notes': notes.trim().isEmpty ? null : notes.trim(),
-    }).select().single();
+    final row = await _client
+        .from('payments')
+        .insert({
+          'property_id': propertyId,
+          'tenant_id': tenantId,
+          'billing_period': billingPeriod,
+          'due_date': dueDate,
+          'amount_due': amountDue,
+          'amount_paid': amountPaid,
+          'payment_date': paymentDate?.isEmpty == true ? null : paymentDate,
+          'payment_method': paymentMethod,
+          'notes': notes.trim().isEmpty ? null : notes.trim(),
+        })
+        .select()
+        .single();
 
     return _reloadPayment(row['id'] as String);
   }
@@ -128,17 +131,21 @@ class SupabaseOwnerPaymentsRepository implements OwnerPaymentsRepository {
     required String? paymentMethod,
     required String notes,
   }) async {
-    await _client.from('payments').update({
-      'tenant_id': tenantId,
-      'billing_period': billingPeriod,
-      'due_date': dueDate,
-      'amount_due': amountDue,
-      'amount_paid': amountPaid,
-      'payment_date':
-          paymentDate?.isEmpty == true ? null : paymentDate,
-      'payment_method': paymentMethod,
-      'notes': notes.trim().isEmpty ? null : notes.trim(),
-    }).eq('id', paymentId).select().single();
+    await _client
+        .from('payments')
+        .update({
+          'tenant_id': tenantId,
+          'billing_period': billingPeriod,
+          'due_date': dueDate,
+          'amount_due': amountDue,
+          'amount_paid': amountPaid,
+          'payment_date': paymentDate?.isEmpty == true ? null : paymentDate,
+          'payment_method': paymentMethod,
+          'notes': notes.trim().isEmpty ? null : notes.trim(),
+        })
+        .eq('id', paymentId)
+        .select()
+        .single();
 
     return _reloadPayment(paymentId);
   }

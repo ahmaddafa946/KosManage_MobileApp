@@ -78,9 +78,8 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
   }
 
   void _showError(Object error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_friendlyError(error))),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(_friendlyError(error))));
   }
 
   @override
@@ -122,14 +121,16 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
             final query = _query.trim().toLowerCase();
             final items = query.isEmpty
                 ? allItems
-                : allItems.where((payment) {
-                    return (payment.tenantName ?? '')
-                            .toLowerCase()
-                            .contains(query) ||
-                        (payment.roomNumber ?? '')
-                            .toLowerCase()
-                            .contains(query);
-                  }).toList(growable: false);
+                : allItems
+                      .where((payment) {
+                        return (payment.tenantName ?? '')
+                                .toLowerCase()
+                                .contains(query) ||
+                            (payment.roomNumber ?? '').toLowerCase().contains(
+                              query,
+                            );
+                      })
+                      .toList(growable: false);
 
             return RefreshIndicator(
               onRefresh: () async => setState(() {}),
@@ -220,8 +221,7 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                     _EmptyState(
                       icon: Icons.payments_outlined,
                       title: 'Belum ada pembayaran',
-                      message:
-                          'Catat tagihan atau pembayaran pertama untuk penghuni aktif.',
+                      message: 'Catat tagihan atau pembayaran pertama untuk penghuni aktif.',
                       action: FilledButton.icon(
                         onPressed: () => _openForm(),
                         icon: const Icon(Icons.add),
@@ -272,38 +272,16 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
             children: [
               Text(
                 payment.tenantName ?? 'Pembayaran',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(context).textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w800),
               ),
-              _Line(
-                label: 'Kamar',
-                value: payment.roomNumber ?? '-',
-              ),
-              _Line(
-                label: 'Periode',
-                value: payment.billingPeriod,
-              ),
-              _Line(
-                label: 'Jatuh tempo',
-                value: formatDateId(payment.dueDate),
-              ),
-              _Line(
-                label: 'Tagihan',
-                value: formatRupiah(payment.amountDue),
-              ),
-              _Line(
-                label: 'Dibayar',
-                value: formatRupiah(payment.amountPaid),
-              ),
-              _Line(
-                label: 'Sisa',
-                value: formatRupiah(payment.remaining),
-              ),
-              _Line(
-                label: 'Status',
-                value: paymentStatusLabel(payment.status),
-              ),
+              _Line(label: 'Kamar', value: payment.roomNumber ?? '-'),
+              _Line(label: 'Periode', value: payment.billingPeriod),
+              _Line(label: 'Jatuh tempo', value: formatDateId(payment.dueDate)),
+              _Line(label: 'Tagihan', value: formatRupiah(payment.amountDue)),
+              _Line(label: 'Dibayar', value: formatRupiah(payment.amountPaid)),
+              _Line(label: 'Sisa', value: formatRupiah(payment.remaining)),
+              _Line(label: 'Status', value: paymentStatusLabel(payment.status)),
               _Line(
                 label: 'Metode',
                 value: paymentMethodLabel(payment.paymentMethod),
@@ -379,10 +357,18 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
   void initState() {
     super.initState();
     final payment = widget.payment;
-    _period = TextEditingController(text: payment?.billingPeriod ?? _monthValue(DateTime.now()));
-    _due = TextEditingController(text: payment?.dueDate ?? _dateValue(DateTime.now()));
-    _amountDue = TextEditingController(text: payment?.amountDue.toStringAsFixed(0) ?? '');
-    _amountPaid = TextEditingController(text: payment?.amountPaid.toStringAsFixed(0) ?? '0');
+    _period = TextEditingController(
+      text: payment?.billingPeriod ?? _monthValue(DateTime.now()),
+    );
+    _due = TextEditingController(
+      text: payment?.dueDate ?? _dateValue(DateTime.now()),
+    );
+    _amountDue = TextEditingController(
+      text: payment?.amountDue.toStringAsFixed(0) ?? '',
+    );
+    _amountPaid = TextEditingController(
+      text: payment?.amountPaid.toStringAsFixed(0) ?? '0',
+    );
     _paymentDate = TextEditingController(text: payment?.paymentDate ?? '');
     _notes = TextEditingController(text: payment?.notes ?? '');
     _tenantId = payment?.tenantId;
@@ -429,7 +415,9 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
         amountDue < 0 ||
         amountPaid == null ||
         amountPaid < 0) {
-      setState(() => _error = 'Lengkapi penghuni, periode, jatuh tempo, dan nominal.');
+      setState(
+        () => _error = 'Lengkapi penghuni, periode, jatuh tempo, dan nominal.',
+      );
       return;
     }
 
@@ -477,7 +465,9 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
   Widget build(BuildContext context) {
     final tenants = widget.tenants;
     return AlertDialog(
-      title: Text(widget.payment == null ? 'Catat Pembayaran' : 'Ubah Pembayaran'),
+      title: Text(
+        widget.payment == null ? 'Catat Pembayaran' : 'Ubah Pembayaran',
+      ),
       content: SizedBox(
         width: 500,
         child: SingleChildScrollView(
@@ -525,9 +515,7 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
                     child: TextField(
                       controller: _amountDue,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Tagihan',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Tagihan'),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -535,9 +523,7 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
                     child: TextField(
                       controller: _amountPaid,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Dibayar',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Dibayar'),
                     ),
                   ),
                 ],
@@ -557,22 +543,10 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
                     value: null,
                     child: Text('Belum dipilih'),
                   ),
-                  DropdownMenuItem(
-                    value: 'cash',
-                    child: Text('Cash'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'transfer',
-                    child: Text('Transfer'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'ewallet',
-                    child: Text('E-Wallet'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'qris',
-                    child: Text('QRIS'),
-                  ),
+                  DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                  DropdownMenuItem(value: 'transfer', child: Text('Transfer')),
+                  DropdownMenuItem(value: 'ewallet', child: Text('E-Wallet')),
+                  DropdownMenuItem(value: 'qris', child: Text('QRIS')),
                 ],
                 onChanged: _loading
                     ? null
@@ -658,9 +632,8 @@ class _PaymentCard extends StatelessWidget {
                       payment.tenantName ?? 'Penghuni',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -795,9 +768,8 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 5),
             Text(message, textAlign: TextAlign.center),

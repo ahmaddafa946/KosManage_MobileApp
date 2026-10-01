@@ -4,15 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kos_manage_mobile/features/auth/presentation/login_page.dart';
 
 void main() {
-  testWidgets('login page exposes email, password, and demo controls',
-      (tester) async {
+  testWidgets('login page exposes email, password, and demo controls', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const ProviderScope(
-        child: MaterialApp(
-          home: Scaffold(
-            body: LoginPage(),
-          ),
-        ),
+        child: MaterialApp(home: Scaffold(body: LoginPage())),
       ),
     );
 

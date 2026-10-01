@@ -28,7 +28,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      await ref.read(authControllerProvider.notifier).signIn(
+      await ref
+          .read(authControllerProvider.notifier)
+          .signIn(
             email: _emailController.text,
             password: _passwordController.text,
           );
@@ -73,9 +75,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     Text(
                       'KosManage',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -132,10 +133,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           ),
                         ),
                       ),
-                      validator: (value) =>
-                          value == null || value.isEmpty
-                              ? 'Password wajib diisi'
-                              : null,
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Password wajib diisi'
+                          : null,
                     ),
                     const SizedBox(height: 20),
                     FilledButton(
@@ -147,7 +147,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             ? const SizedBox(
                                 height: 22,
                                 width: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Masuk'),
                       ),

@@ -27,9 +27,8 @@ class FeaturePlaceholderPage extends StatelessWidget {
                 const SizedBox(height: 14),
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
@@ -37,7 +36,9 @@ class FeaturePlaceholderPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 const Chip(
                   avatar: Icon(Icons.construction_outlined, size: 18),
-                  label: Text('Foundation siap — implementasi modul berikutnya'),
+                  label: Text(
+                    'Foundation siap — implementasi modul berikutnya',
+                  ),
                 ),
               ],
             ),

@@ -42,10 +42,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
             .getOperationalReport(property.id);
         _financialFuture = ref
             .read(ownerReportsRepositoryProvider)
-            .getFinancialReport(
-              property.id,
-              months: _months,
-            );
+            .getFinancialReport(property.id, months: _months);
       });
     });
   }
@@ -59,10 +56,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
           .getOperationalReport(property.id);
       _financialFuture = ref
           .read(ownerReportsRepositoryProvider)
-          .getFinancialReport(
-            property.id,
-            months: _months,
-          );
+          .getFinancialReport(property.id, months: _months);
     });
   }
 
@@ -77,9 +71,8 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       await _refresh();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_friendlyError(error))),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(_friendlyError(error))));
     }
   }
 
@@ -147,8 +140,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                   status: _status,
                   statusOptions: _statusOptions,
                   nextStatuses: _nextStatuses,
-                  onStatusChanged: (value) =>
-                      setState(() => _status = value),
+                  onStatusChanged: (value) => setState(() => _status = value),
                   onAdvance: _setMaintenanceStatus,
                 )
               else
@@ -162,10 +154,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                       _months = value;
                       _financialFuture = ref
                           .read(ownerReportsRepositoryProvider)
-                          .getFinancialReport(
-                            property.id,
-                            months: value,
-                          );
+                          .getFinancialReport(property.id, months: value);
                     });
                   },
                 ),
@@ -218,8 +207,8 @@ class _OperationalView extends StatelessWidget {
         final visible = status == 'all'
             ? report.activeMaintenance
             : report.activeMaintenance
-                .where((item) => item.status == status)
-                .toList(growable: false);
+                  .where((item) => item.status == status)
+                  .toList(growable: false);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,9 +217,8 @@ class _OperationalView extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               'Laporan Maintenance',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             SingleChildScrollView(
@@ -302,7 +290,8 @@ class _OperationalKpis extends StatelessWidget {
           icon: Icons.percent,
           title: 'Okupansi',
           value: report.occupancyRate.toString() + '%',
-          detail: report.occupiedRooms.toString() +
+          detail:
+              report.occupiedRooms.toString() +
               ' dari ' +
               report.totalRooms.toString() +
               ' kamar',
@@ -365,9 +354,7 @@ class _FinancialView extends StatelessWidget {
           children: [
             DropdownButtonFormField<int>(
               initialValue: months,
-              decoration: const InputDecoration(
-                labelText: 'Periode laporan',
-              ),
+              decoration: const InputDecoration(labelText: 'Periode laporan'),
               items: const [
                 DropdownMenuItem(value: 1, child: Text('1 bulan')),
                 DropdownMenuItem(value: 3, child: Text('3 bulan')),
@@ -410,9 +397,8 @@ class _FinancialView extends StatelessWidget {
             const SizedBox(height: 18),
             Text(
               'Ringkasan per bulan',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             if (report.monthly.isEmpty)
@@ -442,9 +428,7 @@ class _FinancialView extends StatelessWidget {
                           ),
                           trailing: Text(
                             formatRupiah(row.amountPaid),
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
+                            style: Theme.of(context).textTheme.labelLarge
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                         ),
@@ -484,19 +468,12 @@ class _Kpi extends StatelessWidget {
             const Spacer(),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(title, style: Theme.of(context).textTheme.bodySmall),
             if (detail != null)
-              Text(
-                detail!,
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
+              Text(detail!, style: Theme.of(context).textTheme.labelSmall),
           ],
         ),
       ),
@@ -529,14 +506,10 @@ class _MoneyKpi extends StatelessWidget {
               value,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(title, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),
@@ -568,9 +541,8 @@ class _MaintenanceCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     report.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ),
                 _Badge(label: maintenanceStatusLabel(report.status)),
@@ -599,8 +571,7 @@ class _MaintenanceCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  'Prioritas ' +
-                      maintenancePriorityLabel(report.priority),
+                  'Prioritas ' + maintenancePriorityLabel(report.priority),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
                 const Spacer(),
@@ -637,10 +608,7 @@ class _Badge extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;

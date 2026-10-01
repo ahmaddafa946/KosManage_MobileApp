@@ -53,9 +53,7 @@ class SupabaseOwnerDashboardRepository implements OwnerDashboardRepository {
 
     final maintenance = await _client
         .from('maintenance_reports')
-        .select(
-          'id,title,priority,status,created_at,rooms(room_number)',
-        )
+        .select('id,title,priority,status,created_at,rooms(room_number)')
         .eq('property_id', propertyId)
         .not('status', 'in', '(resolved,closed)')
         .order('created_at', ascending: false)
@@ -66,10 +64,7 @@ class SupabaseOwnerDashboardRepository implements OwnerDashboardRepository {
         .select('id,name,end_date,rooms(room_number)')
         .eq('property_id', propertyId)
         .eq('status', 'active')
-        .gte(
-          'end_date',
-          DateTime.now().toIso8601String().substring(0, 10),
-        )
+        .gte('end_date', DateTime.now().toIso8601String().substring(0, 10))
         .lte(
           'end_date',
           DateTime.now()
@@ -111,24 +106,32 @@ class SupabaseOwnerDashboardRepository implements OwnerDashboardRepository {
 
     final recentPayments = parsedPayments.take(5).toList(growable: false);
 
-    final upcomingPayments = parsedPayments.where((payment) {
-      return isUpcomingPayment(
-        payment.dueDate,
-        today: today,
-        remainingAmount: payment.remainingAmount,
-      );
-    }).toList()
-      ..sort((a, b) => (a.dueDate ?? DateTime(9999)).compareTo(b.dueDate ?? DateTime(9999)));
+    final upcomingPayments =
+        parsedPayments.where((payment) {
+          return isUpcomingPayment(
+            payment.dueDate,
+            today: today,
+            remainingAmount: payment.remainingAmount,
+          );
+        }).toList()..sort(
+          (a, b) => (a.dueDate ?? DateTime(9999)).compareTo(
+            b.dueDate ?? DateTime(9999),
+          ),
+        );
 
-    final overduePayments = parsedPayments.where((payment) {
-      return isOverduePayment(
-        payment.dueDate,
-        today: today,
-        remainingAmount: payment.remainingAmount,
-        status: payment.status,
-      );
-    }).toList()
-      ..sort((a, b) => (a.dueDate ?? DateTime(1970)).compareTo(b.dueDate ?? DateTime(1970)));
+    final overduePayments =
+        parsedPayments.where((payment) {
+          return isOverduePayment(
+            payment.dueDate,
+            today: today,
+            remainingAmount: payment.remainingAmount,
+            status: payment.status,
+          );
+        }).toList()..sort(
+          (a, b) => (a.dueDate ?? DateTime(1970)).compareTo(
+            b.dueDate ?? DateTime(1970),
+          ),
+        );
 
     final roomsByStatus = <String, int>{
       'occupied': 0,

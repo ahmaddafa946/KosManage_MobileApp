@@ -17,7 +17,10 @@ void main() {
     expect(rentalCountdown('2026-10-31', today: today).label, 'Sisa 30 hari');
     expect(rentalCountdown('2026-10-15', today: today).label, 'Sisa 14 hari');
     expect(rentalCountdown('2026-10-07', today: today).label, 'Sisa 6 hari');
-    expect(rentalCountdown('2026-10-01', today: today).label, 'Berakhir hari ini');
+    expect(
+      rentalCountdown('2026-10-01', today: today).label,
+      'Berakhir hari ini',
+    );
     expect(rentalCountdown('2026-09-28', today: today).label, 'Lewat 3 hari');
   });
 }

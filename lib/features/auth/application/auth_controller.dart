@@ -7,23 +7,20 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return SupabaseAuthRepository(Supabase.instance.client);
 });
 
-final authControllerProvider =
-    AsyncNotifierProvider<AuthController, void>(AuthController.new);
+final authControllerProvider = AsyncNotifierProvider<AuthController, void>(
+  AuthController.new,
+);
 
 class AuthController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
     state = const AsyncLoading();
     try {
-      await ref.read(authRepositoryProvider).signIn(
-            email: email,
-            password: password,
-          );
+      await ref
+          .read(authRepositoryProvider)
+          .signIn(email: email, password: password);
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
