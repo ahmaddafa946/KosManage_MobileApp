@@ -49,6 +49,7 @@ class SupabaseOwnerPaymentsRepository implements OwnerPaymentsRepository {
     String billingPeriod = '',
     String status = 'all',
     String method = 'all',
+    String? tenantId,
   }) async {
     var request = _client
         .from('payments')
