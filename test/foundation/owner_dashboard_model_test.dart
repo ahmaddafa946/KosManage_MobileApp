@@ -28,8 +28,8 @@ void main() {
   test('parses recent payment and maintenance previews', () {
     final payment = PaymentPreview.fromJson({
       'id': 'payment-1',
-      'tenant_name': 'Budi',
-      'room_number': 'A-01',
+      'tenants': {'name': 'Budi'},
+      'rooms': {'room_number': 'A-01'},
       'billing_period': '2026-10',
       'due_date': '2026-10-25',
       'amount_due': '1400000',
@@ -39,7 +39,7 @@ void main() {
     final maintenance = MaintenancePreview.fromJson({
       'id': 'report-1',
       'title': 'AC kurang dingin',
-      'room_number': 'A-02',
+      'rooms': {'room_number': 'A-02'},
       'priority': 'high',
       'status': 'in_progress',
       'created_at': '2026-10-01T00:00:00Z',
