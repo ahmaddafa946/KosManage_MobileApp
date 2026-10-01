@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../domain/models/user_profile.dart';
-import '../../auth/application/auth_controller.dart';
 import '../../shared/presentation/feature_placeholder_page.dart';
 import 'owner_dashboard_page.dart';
 
@@ -99,4 +97,3 @@ class _OwnerShellPageState extends State<OwnerShellPage> {
     );
   }
 }
-
