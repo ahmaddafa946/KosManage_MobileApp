@@ -144,6 +144,15 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: () => _openForm(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Tambah Penghuni'),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   if (items.isEmpty)
                     _EmptyState(
