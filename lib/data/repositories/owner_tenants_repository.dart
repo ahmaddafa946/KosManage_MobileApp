@@ -9,7 +9,10 @@ abstract interface class OwnerTenantsRepository {
     String status = 'all',
   });
 
-  Future<List<OwnerRoom>> getAvailableRooms(String propertyId);
+  Future<List<OwnerRoom>> getAvailableRooms(
+    String propertyId, {
+    String? currentRoomId,
+  });
 
   Future<OwnerTenant> createTenant(
     String propertyId, {
@@ -83,24 +86,10 @@ class SupabaseOwnerTenantsRepository implements OwnerTenantsRepository {
   }
 
   @override
-  Future<List<OwnerRoom>> getAvailableRooms(String propertyId) async {
-    final rows = await _client
-        .from('rooms')
-        .select('id,room_number,floor,price,status,facilities,notes')
-        .eq('property_id', propertyId)
-        .eq('status', 'available')
-        .order('room_number');
-
-    return (rows as List)
-        .cast<Map<String, dynamic>>()
-        .map(OwnerRoom.fromJson)
-        .toList(growable: false);
-  }
-
-  Future<List<OwnerRoom>> _getRoomsForEdit(
-    String propertyId,
+  Future<List<OwnerRoom>> getAvailableRooms(
+    String propertyId, {
     String? currentRoomId,
-  ) async {
+  }) async {
     final rows = await _client
         .from('rooms')
         .select('id,room_number,floor,price,status,facilities,notes')
@@ -111,8 +100,7 @@ class SupabaseOwnerTenantsRepository implements OwnerTenantsRepository {
         .cast<Map<String, dynamic>>()
         .map(OwnerRoom.fromJson)
         .where(
-          (room) =>
-              room.status == 'available' || room.id == currentRoomId,
+          (room) => room.status == 'available' || room.id == currentRoomId,
         )
         .toList(growable: false);
   }
@@ -208,12 +196,5 @@ class SupabaseOwnerTenantsRepository implements OwnerTenantsRepository {
   @override
   Future<void> deleteTenant(String tenantId) async {
     await _client.from('tenants').delete().eq('id', tenantId);
-  }
-
-  Future<List<OwnerRoom>> getEditableRooms(
-    String propertyId,
-    String? currentRoomId,
-  ) {
-    return _getRoomsForEdit(propertyId, currentRoomId);
   }
 }
