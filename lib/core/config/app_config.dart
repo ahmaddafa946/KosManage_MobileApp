@@ -6,8 +6,8 @@ class AppConfig {
 
   static AppConfig fromEnvironment() {
     return const AppConfig(
-      supabaseUrl: String.fromEnvironment('https://aamizrsuxbaaiiafrile.supabase.co'),
-      supabaseAnonKey: String.fromEnvironment('sb_publishable_K52HV6sFDZkDlloL6CnZNg_ZeijOW-x'),
+      supabaseUrl: String.fromEnvironment('SUPABASE_URL'),
+      supabaseAnonKey: String.fromEnvironment('SUPABASE_ANON_KEY'),
     );
   }
 
