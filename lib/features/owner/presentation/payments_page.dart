@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
+import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
 
 class PaymentsPage extends ConsumerStatefulWidget {
@@ -54,14 +55,18 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
       builder: (context) => AlertDialog(
         title: const Text('Hapus pembayaran?'),
         content: const Text(
-          'Riwayat ini akan dihapus secara permanen. Tindakan tidak dapat dibatalkan.',
+          'Riwayat ini akan dihapus permanen dan tidak bisa dibatalkan.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Batal'),
           ),
-          FilledButton.tonal(
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Hapus'),
           ),
@@ -71,20 +76,26 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
     if (confirmed != true || !mounted) return;
     try {
       await ref.read(ownerPaymentsRepositoryProvider).deletePayment(payment.id);
-      setState(() {});
+      if (mounted) setState(() {});
     } catch (error) {
       _showError(error);
     }
   }
 
   void _showError(Object error) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(_friendlyError(error))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_friendlyError(error)),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final paymentsRepo = ref.watch(ownerPaymentsRepositoryProvider);
+    final scheme = Theme.of(context).colorScheme;
+
     return FutureBuilder<OwnerProperty>(
       future: ref.watch(ownerPropertyProvider.future),
       builder: (context, propertySnapshot) {
@@ -92,7 +103,7 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
           return const Center(child: CircularProgressIndicator());
         }
         if (propertySnapshot.hasError || propertySnapshot.data == null) {
-          return _ErrorState(
+          return AppErrorState(
             message: _friendlyError(propertySnapshot.error),
             onRetry: () => setState(() {}),
           );
@@ -111,7 +122,7 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return _ErrorState(
+              return AppErrorState(
                 message: _friendlyError(snapshot.error),
                 onRetry: () => setState(() {}),
               );
@@ -122,29 +133,61 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
             final items = query.isEmpty
                 ? allItems
                 : allItems
-                      .where((payment) {
-                        return (payment.tenantName ?? '')
-                                .toLowerCase()
-                                .contains(query) ||
-                            (payment.roomNumber ?? '').toLowerCase().contains(
-                              query,
-                            );
-                      })
-                      .toList(growable: false);
+                    .where((payment) {
+                      return (payment.tenantName ?? '')
+                              .toLowerCase()
+                              .contains(query) ||
+                          (payment.roomNumber ?? '')
+                              .toLowerCase()
+                              .contains(query);
+                    })
+                    .toList(growable: false);
 
             return RefreshIndicator(
               onRefresh: () async => setState(() {}),
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                 children: [
-                  TextField(
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
-                      hintText: 'Cari penghuni atau kamar...',
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              property.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${items.length} catatan pembayaran',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: () => _openForm(),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Catat'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  AppSearchField(
+                    hint: 'Cari penghuni atau kamar...',
                     onChanged: (value) => setState(() => _query = value),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -155,7 +198,8 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                             labelText: 'Periode',
                             hintText: 'YYYY-MM',
                           ),
-                          onChanged: (value) => _period = value,
+                          onChanged: (value) =>
+                              setState(() => _period = value.trim()),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -169,69 +213,66 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _filter('Semua', 'all'),
-                        _filter('Belum', 'unpaid'),
-                        _filter('Sebagian', 'partial'),
-                        _filter('Lunas', 'paid'),
-                        _filter('Terlambat', 'overdue'),
+                        _filterChip('Semua', 'all'),
+                        _filterChip('Belum', 'unpaid'),
+                        _filterChip('Sebagian', 'partial'),
+                        _filterChip('Lunas', 'paid'),
+                        _filterChip('Terlambat', 'overdue'),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: _method,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Metode pembayaran',
                     ),
                     items: const [
                       DropdownMenuItem(
                         value: 'all',
-                        child: Text('Semua metode'),
-                      ),
-                      DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                      DropdownMenuItem(
-                        value: 'transfer',
-                        child: Text('Transfer'),
+                        child: Text('Semua metode',
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
                       ),
                       DropdownMenuItem(
-                        value: 'ewallet',
-                        child: Text('E-Wallet'),
-                      ),
+                          value: 'cash',
+                          child: Text('Cash',
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      DropdownMenuItem(
+                          value: 'transfer',
+                          child: Text('Transfer',
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      DropdownMenuItem(
+                          value: 'ewallet',
+                          child: Text('E-Wallet',
+                              maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                     onChanged: (value) {
                       if (value != null) setState(() => _method = value);
                     },
                   ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: FilledButton.icon(
-                      onPressed: () => _openForm(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Catat Pembayaran'),
-                    ),
-                  ),
                   const SizedBox(height: 16),
                   if (items.isEmpty)
-                    _EmptyState(
+                    AppEmptyState(
                       icon: Icons.payments_outlined,
                       title: 'Belum ada pembayaran',
-                      message: 'Catat tagihan atau pembayaran pertama untuk penghuni aktif.',
+                      message:
+                          'Catat tagihan atau pembayaran pertama untuk penghuni aktif.',
                       action: FilledButton.icon(
                         onPressed: () => _openForm(),
-                        icon: const Icon(Icons.add),
+                        icon: const Icon(Icons.add, size: 18),
                         label: const Text('Catat Pembayaran'),
                       ),
                     )
                   else
                     ...items.map(
                       (payment) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: _PaymentCard(
                           payment: payment,
                           onTap: () => _showDetail(payment),
@@ -249,10 +290,10 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
     );
   }
 
-  Widget _filter(String label, String value) {
+  Widget _filterChip(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
+      child: FilterChip(
         label: Text(label),
         selected: _status == value,
         onSelected: (_) => setState(() => _status = value),
@@ -264,34 +305,63 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Wrap(
-            runSpacing: 12,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                payment.tenantName ?? 'Pembayaran',
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      payment.tenantName ?? 'Pembayaran',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  AppStatusChip(
+                    label: paymentStatusLabel(payment.status),
+                    tone: paymentTone(payment.status),
+                  ),
+                ],
               ),
-              _Line(label: 'Kamar', value: payment.roomNumber ?? '-'),
-              _Line(label: 'Periode', value: payment.billingPeriod),
-              _Line(label: 'Jatuh tempo', value: formatDateId(payment.dueDate)),
-              _Line(label: 'Tagihan', value: formatRupiah(payment.amountDue)),
-              _Line(label: 'Dibayar', value: formatRupiah(payment.amountPaid)),
-              _Line(label: 'Sisa', value: formatRupiah(payment.remaining)),
-              _Line(label: 'Status', value: paymentStatusLabel(payment.status)),
-              _Line(
+              const SizedBox(height: 12),
+              _DetailRow(
+                  label: 'Kamar',
+                  value: payment.roomNumber == null
+                      ? '-'
+                      : 'Kamar ${payment.roomNumber}'),
+              _DetailRow(label: 'Periode', value: payment.billingPeriod),
+              _DetailRow(
+                  label: 'Jatuh tempo',
+                  value: formatDateId(payment.dueDate)),
+              _DetailRow(
+                  label: 'Tagihan',
+                  value: formatRupiah(payment.amountDue)),
+              _DetailRow(
+                  label: 'Dibayar',
+                  value: formatRupiah(payment.amountPaid)),
+              _DetailRow(
+                  label: 'Sisa', value: formatRupiah(payment.remaining)),
+              _DetailRow(
                 label: 'Metode',
                 value: paymentMethodLabel(payment.paymentMethod),
               ),
-              _Line(
+              _DetailRow(
                 label: 'Tanggal bayar',
                 value: formatDateId(payment.paymentDate),
               ),
               if (payment.notes?.isNotEmpty == true)
-                _Line(label: 'Catatan', value: payment.notes!),
+                _DetailRow(label: 'Catatan', value: payment.notes!),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
@@ -300,18 +370,22 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                         Navigator.pop(context);
                         _openForm(payment: payment);
                       },
-                      icon: const Icon(Icons.edit_outlined),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
                       label: const Text('Ubah'),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor:
+                            Theme.of(context).colorScheme.error,
+                      ),
                       onPressed: () {
                         Navigator.pop(context);
                         _delete(payment);
                       },
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const Icon(Icons.delete_outline, size: 18),
                       label: const Text('Hapus'),
                     ),
                   ),
@@ -337,7 +411,8 @@ class _PaymentFormDialog extends ConsumerStatefulWidget {
   final OwnerPayment? payment;
 
   @override
-  ConsumerState<_PaymentFormDialog> createState() => _PaymentFormDialogState();
+  ConsumerState<_PaymentFormDialog> createState() =>
+      _PaymentFormDialogState();
 }
 
 class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
@@ -409,14 +484,15 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
     );
 
     if (tenantId == null ||
-        !RegExp(r'^\\d{4}-\\d{2}$').hasMatch(period) ||
+        !RegExp(r'^\d{4}-\d{2}$').hasMatch(period) ||
         due.isEmpty ||
         amountDue == null ||
         amountDue < 0 ||
         amountPaid == null ||
         amountPaid < 0) {
       setState(
-        () => _error = 'Lengkapi penghuni, periode, jatuh tempo, dan nominal.',
+        () => _error =
+            'Lengkapi penghuni, periode, jatuh tempo, dan nominal.',
       );
       return;
     }
@@ -463,24 +539,30 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final tenants = widget.tenants;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       title: Text(
         widget.payment == null ? 'Catat Pembayaran' : 'Ubah Pembayaran',
       ),
-      content: SizedBox(
-        width: 500,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 500,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               OwnerTenantDropdownField(
-                tenants: tenants,
+                tenants: widget.tenants,
                 value: _tenantId,
                 enabled: !_loading,
                 onChanged: (value) => setState(() => _tenantId = value),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               TextField(
                 controller: _period,
                 decoration: const InputDecoration(
@@ -488,67 +570,108 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
                   hintText: 'YYYY-MM',
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _DateField(
                 label: 'Jatuh tempo',
                 controller: _due,
                 onTap: () => _pickDate(_due),
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _amountDue,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Tagihan'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: _amountPaid,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Dibayar'),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth < 340) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          controller: _amountDue,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                              labelText: 'Tagihan (Rp)'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _amountPaid,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                              labelText: 'Dibayar (Rp)'),
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _amountDue,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                              labelText: 'Tagihan (Rp)'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _amountPaid,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                              labelText: 'Dibayar (Rp)'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _DateField(
-                label: 'Tanggal bayar',
+                label: 'Tanggal bayar (opsional)',
                 controller: _paymentDate,
                 onTap: () => _pickDate(_paymentDate),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String?>(
                 initialValue: _method,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Metode'),
                 items: const [
                   DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('Belum dipilih'),
+                    child: Text('Belum dipilih',
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
-                  DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                  DropdownMenuItem(value: 'transfer', child: Text('Transfer')),
-                  DropdownMenuItem(value: 'ewallet', child: Text('E-Wallet')),
-                  DropdownMenuItem(value: 'qris', child: Text('QRIS')),
+                  DropdownMenuItem(
+                      value: 'cash',
+                      child: Text('Cash',
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(
+                      value: 'transfer',
+                      child: Text('Transfer',
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(
+                      value: 'ewallet',
+                      child: Text('E-Wallet',
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(
+                      value: 'qris',
+                      child: Text('QRIS',
+                          maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
                 onChanged: _loading
                     ? null
                     : (value) => setState(() => _method = value),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               TextField(
                 controller: _notes,
                 maxLines: 2,
                 decoration: const InputDecoration(labelText: 'Catatan'),
               ),
               const SizedBox(height: 8),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Status pembayaran mengikuti perhitungan database.',
+              Text(
+                'Status dihitung otomatis dari nominal.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               if (_error != null)
@@ -558,6 +681,7 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
                     _error!,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -579,6 +703,10 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
   }
 }
 
+/// Root overflow fix: selected display + menu item both constrained.
+/// Old code only set ellipsis on menu item; selected value Row
+/// could push 47px beyond 280px dialog. isExpanded + selectedItemBuilder
+/// forces tight layout. ponytail: switch to search field when >50 tenants.
 class OwnerTenantDropdownField extends StatelessWidget {
   const OwnerTenantDropdownField({
     super.key,
@@ -593,21 +721,35 @@ class OwnerTenantDropdownField extends StatelessWidget {
   final bool enabled;
   final ValueChanged<String?> onChanged;
 
+  String _label(OwnerTenant t) =>
+      t.roomNumber == null ? t.name : '${t.name} · Kamar ${t.roomNumber}';
+
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
       initialValue: value,
       isExpanded: true,
       decoration: const InputDecoration(labelText: 'Penghuni'),
+      hint: const Text('Pilih penghuni',
+          maxLines: 1, overflow: TextOverflow.ellipsis),
+      selectedItemBuilder: (context) => tenants
+          .map(
+            (t) => Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _label(t),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+          .toList(),
       items: tenants
           .map(
             (tenant) => DropdownMenuItem(
               value: tenant.id,
               child: Text(
-                tenant.name +
-                    (tenant.roomNumber == null
-                        ? ''
-                        : ' · Kamar ' + tenant.roomNumber!),
+                _label(tenant),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -634,19 +776,35 @@ class _PaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isPaid = payment.status == 'paid';
+
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+          padding: const EdgeInsets.all(16),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isPaid
+                      ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                      : scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Icon(
-                  payment.status == 'paid'
+                  isPaid
                       ? Icons.check_rounded
                       : Icons.receipt_long_outlined,
+                  size: 22,
+                  color: isPaid
+                      ? const Color(0xFF047857)
+                      : scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: 12),
@@ -658,36 +816,53 @@ class _PaymentCard extends StatelessWidget {
                       payment.tenantName ?? 'Penghuni',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
-                      'Kamar ' +
-                          (payment.roomNumber ?? '-') +
-                          ' · ' +
-                          payment.billingPeriod,
+                      'Kamar ${payment.roomNumber ?? '-'} · ${payment.billingPeriod}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12, color: scheme.onSurfaceVariant),
                     ),
+                    const SizedBox(height: 6),
                     Text(
-                      formatRupiah(payment.amountPaid) +
-                          ' / ' +
-                          formatRupiah(payment.amountDue),
-                      style: Theme.of(context).textTheme.bodySmall,
+                      '${formatRupiah(payment.amountPaid)} / ${formatRupiah(payment.amountDue)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.primary,
+                      ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      payment.status == 'paid'
+                      isPaid
                           ? 'Lunas'
-                          : 'Sisa ' + formatRupiah(payment.remaining),
-                      style: Theme.of(context).textTheme.labelSmall,
+                          : 'Sisa ${formatRupiah(payment.remaining)} · Jatuh tempo ${formatDateId(payment.dueDate)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11, color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _Badge(label: paymentStatusLabel(payment.status)),
+                  AppStatusChip(
+                    label: paymentStatusLabel(payment.status),
+                    tone: paymentTone(payment.status),
+                  ),
                   PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert,
+                        size: 20, color: scheme.onSurfaceVariant),
                     onSelected: (value) {
                       if (value == 'edit') onEdit();
                       if (value == 'delete') onDelete();
@@ -732,124 +907,45 @@ class _DateField extends StatelessWidget {
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-        child: Text(label, style: Theme.of(context).textTheme.labelSmall),
-      ),
-    );
-  }
-}
-
-class _Line extends StatelessWidget {
-  const _Line({required this.label, required this.value});
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
 
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: 100, child: Text(label)),
-        Expanded(child: Text(value)),
-      ],
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.action,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final Widget action;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          children: [
-            Icon(icon, size: 44),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 5),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            action,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 48),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Coba lagi'),
-            ),
-          ],
-        ),
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant)),
+          ),
+          Expanded(
+            child: Text(value,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
     );
   }
 }
 
 String _dateValue(DateTime value) {
-  return value.year.toString().padLeft(4, '0') +
-      '-' +
-      value.month.toString().padLeft(2, '0') +
-      '-' +
-      value.day.toString().padLeft(2, '0');
+  return '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 }
 
 String _monthValue(DateTime value) {
-  return value.year.toString().padLeft(4, '0') +
-      '-' +
-      value.month.toString().padLeft(2, '0');
+  return '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}';
 }
 
 String _friendlyError(Object? error) {

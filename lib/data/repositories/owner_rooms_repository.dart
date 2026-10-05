@@ -57,7 +57,7 @@ class SupabaseOwnerRoomsRepository implements OwnerRoomsRepository {
         .eq('property_id', propertyId);
 
     if (query.trim().isNotEmpty) {
-      request = request.ilike('room_number', '%' + query.trim() + '%');
+      request = request.ilike('room_number', '%${query.trim()}%');
     }
     if (status != 'all') {
       request = request.eq('status', status);

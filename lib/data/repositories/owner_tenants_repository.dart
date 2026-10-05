@@ -74,7 +74,7 @@ class SupabaseOwnerTenantsRepository implements OwnerTenantsRepository {
     if (query.trim().isNotEmpty) {
       final value = query.trim();
       request = request.or(
-        'name.ilike.%' + value + '%,phone.ilike.%' + value + '%',
+        'name.ilike.%$value%,phone.ilike.%$value%',
       );
     }
 

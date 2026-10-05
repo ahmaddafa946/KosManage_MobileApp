@@ -109,9 +109,7 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
     final now = DateTime.now();
     final first = DateTime(now.year, now.month - (months - 1), 1);
     String yyyymm(DateTime value) {
-      return value.year.toString().padLeft(4, '0') +
-          '-' +
-          value.month.toString().padLeft(2, '0');
+      return '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}';
     }
 
     final startPeriod = yyyymm(first);

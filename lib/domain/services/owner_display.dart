@@ -132,7 +132,7 @@ RentalCountdown rentalCountdown(String? endDate, {DateTime? today}) {
   final days = end.difference(start).inDays;
   if (days < 0) {
     return RentalCountdown(
-      label: 'Lewat ' + days.abs().toString() + ' hari',
+      label: 'Lewat ${days.abs()} hari',
       urgency: RentalUrgency.pastDue,
     );
   }
@@ -144,24 +144,24 @@ RentalCountdown rentalCountdown(String? endDate, {DateTime? today}) {
   }
   if (days <= 6) {
     return RentalCountdown(
-      label: 'Sisa ' + days.toString() + ' hari',
+      label: 'Sisa $days hari',
       urgency: RentalUrgency.verySoon,
     );
   }
   if (days <= 14) {
     return RentalCountdown(
-      label: 'Sisa ' + days.toString() + ' hari',
+      label: 'Sisa $days hari',
       urgency: RentalUrgency.soon,
     );
   }
   if (days <= 30) {
     return RentalCountdown(
-      label: 'Sisa ' + days.toString() + ' hari',
+      label: 'Sisa $days hari',
       urgency: RentalUrgency.attention,
     );
   }
   return RentalCountdown(
-    label: 'Sisa ' + days.toString() + ' hari',
+    label: 'Sisa $days hari',
     urgency: RentalUrgency.normal,
   );
 }

@@ -4,6 +4,9 @@ analyzer:
   exclude:
     - build/**
     - .dart_tool/**
+    - android/**
+    - ios/**
+    - web/**
 
 linter:
   rules:

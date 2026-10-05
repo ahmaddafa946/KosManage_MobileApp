@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/owner_reports_repository.dart';
 import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
+import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
 
 class ReportsPage extends ConsumerStatefulWidget {
@@ -41,9 +42,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
         final repository = ref.read(ownerReportsRepositoryProvider);
         _operationalFuture = repository.getOperationalReport(property.id);
         _maintenanceFuture = repository.getMaintenanceReports(property.id);
-        _financialFuture = ref
-            .read(ownerReportsRepositoryProvider)
-            .getFinancialReport(property.id, months: _months);
+        _financialFuture = repository.getFinancialReport(property.id, months: _months);
       });
     });
   }
@@ -55,9 +54,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       final repository = ref.read(ownerReportsRepositoryProvider);
       _operationalFuture = repository.getOperationalReport(property.id);
       _maintenanceFuture = repository.getMaintenanceReports(property.id);
-      _financialFuture = ref
-          .read(ownerReportsRepositoryProvider)
-          .getFinancialReport(property.id, months: _months);
+      _financialFuture = repository.getFinancialReport(property.id, months: _months);
     });
   }
 
@@ -72,8 +69,12 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       await _refresh();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(_friendlyError(error))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_friendlyError(error)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
@@ -99,11 +100,12 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
           return const Center(child: CircularProgressIndicator());
         }
         if (propertySnapshot.hasError || propertySnapshot.data == null) {
-          return _ErrorState(
+          return AppErrorState(
             message: _friendlyError(propertySnapshot.error),
             onRetry: _refresh,
           );
         }
+        final property = propertySnapshot.data!;
 
         return RefreshIndicator(
           onRefresh: _refresh,
@@ -112,20 +114,33 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
             children: [
               Text(
-                'Pantau kondisi operasional dan ringkasan keuangan kos.',
-                style: Theme.of(context).textTheme.bodyMedium,
+                property.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Kondisi operasional dan ringkasan keuangan kos.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 14),
               SegmentedButton<int>(
                 segments: const [
                   ButtonSegment(
                     value: 0,
-                    icon: Icon(Icons.build_outlined),
+                    icon: Icon(Icons.build_outlined, size: 18),
                     label: Text('Operasional'),
                   ),
                   ButtonSegment(
                     value: 1,
-                    icon: Icon(Icons.account_balance_wallet_outlined),
+                    icon: Icon(Icons.account_balance_wallet_outlined, size: 18),
                     label: Text('Keuangan'),
                   ),
                 ],
@@ -144,14 +159,15 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                   nextStatuses: _nextStatuses,
                   onStatusChanged: (value) => setState(() => _status = value),
                   onAdvance: _setMaintenanceStatus,
+                  onRetry: _refresh,
                 )
               else
                 _FinancialView(
                   future: _financialFuture,
                   months: _months,
+                  onRetry: _refresh,
                   onMonthsChanged: (value) {
                     if (value == null) return;
-                    final property = propertySnapshot.data!;
                     setState(() {
                       _months = value;
                       _financialFuture = ref
@@ -177,6 +193,7 @@ class _OperationalView extends StatelessWidget {
     required this.nextStatuses,
     required this.onStatusChanged,
     required this.onAdvance,
+    required this.onRetry,
   });
 
   final Future<OwnerOperationalReport>? future;
@@ -186,33 +203,44 @@ class _OperationalView extends StatelessWidget {
   final List<(String, String)> Function(String) nextStatuses;
   final ValueChanged<String> onStatusChanged;
   final Future<void> Function(OwnerMaintenanceReport, String) onAdvance;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     final future = this.future;
     if (future == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
 
     return FutureBuilder<OwnerOperationalReport>(
       future: future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          );
         }
         if (snapshot.hasError || snapshot.data == null) {
-          return _ErrorState(
+          return AppErrorState(
             message: _friendlyError(snapshot.error),
-            onRetry: () {},
+            onRetry: onRetry,
           );
         }
 
         final report = snapshot.data!;
         final maintenanceFuture = this.maintenanceFuture;
         if (maintenanceFuture == null) {
-          return _ErrorState(
+          return AppErrorState(
             message: 'Laporan maintenance belum siap.',
-            onRetry: () {},
+            onRetry: onRetry,
           );
         }
 
@@ -230,13 +258,14 @@ class _OperationalView extends StatelessWidget {
               );
             }
             if (maintenanceSnapshot.hasError) {
-              return _ErrorState(
+              return AppErrorState(
                 message: _friendlyError(maintenanceSnapshot.error),
-                onRetry: () {},
+                onRetry: onRetry,
               );
             }
 
-            final maintenance = maintenanceSnapshot.data ?? const <OwnerMaintenanceReport>[];
+            final maintenance =
+                maintenanceSnapshot.data ?? const <OwnerMaintenanceReport>[];
             final visible = status == 'all'
                 ? maintenance
                 : maintenance
@@ -247,11 +276,11 @@ class _OperationalView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _OperationalKpis(report: report),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Text(
-                  'Laporan Maintenance',
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                  'Laporan Maintenance (${visible.length})',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15),
                 ),
                 const SizedBox(height: 8),
                 SingleChildScrollView(
@@ -261,10 +290,11 @@ class _OperationalView extends StatelessWidget {
                         .map(
                           (option) => Padding(
                             padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
+                            child: FilterChip(
                               label: Text(option.$2),
                               selected: status == option.$1,
-                              onSelected: (_) => onStatusChanged(option.$1),
+                              onSelected: (_) =>
+                                  onStatusChanged(option.$1),
                             ),
                           ),
                         )
@@ -273,23 +303,17 @@ class _OperationalView extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 if (visible.isEmpty)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(26),
-                      child: Center(
-                        child: Text(
-                          maintenance.isEmpty
-                              ? 'Belum ada laporan maintenance.'
-                              : 'Tidak ada laporan pada filter ini.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
+                  AppEmptyState(
+                    icon: Icons.handyman_outlined,
+                    title: 'Tidak ada laporan',
+                    message: maintenance.isEmpty
+                        ? 'Belum ada laporan maintenance dari penghuni.'
+                        : 'Tidak ada laporan pada filter ini.',
                   )
                 else
                   ...visible.map(
                     (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.only(bottom: 12),
                       child: _MaintenanceCard(
                         report: item,
                         actions: nextStatuses(item.status),
@@ -313,164 +337,50 @@ class _OperationalKpis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      childAspectRatio: 1.35,
-      children: [
-        _Kpi(
-          icon: Icons.percent,
-          title: 'Okupansi',
-          value: report.occupancyRate.toString() + '%',
-          detail:
-              report.occupiedRooms.toString() +
-              ' dari ' +
-              report.totalRooms.toString() +
-              ' kamar',
-        ),
-        _Kpi(
-          icon: Icons.meeting_room_outlined,
-          title: 'Kamar kosong',
-          value: report.availableRooms.toString(),
-        ),
-        _Kpi(
-          icon: Icons.home_repair_service_outlined,
-          title: 'Maintenance',
-          value: report.maintenanceRooms.toString(),
-        ),
-        _Kpi(
-          icon: Icons.pending_actions_outlined,
-          title: 'Laporan aktif',
-          value: report.activeMaintenance.length.toString(),
-        ),
-      ],
-    );
-  }
-}
-
-class _FinancialView extends StatelessWidget {
-  const _FinancialView({
-    required this.future,
-    required this.months,
-    required this.onMonthsChanged,
-  });
-
-  final Future<OwnerFinancialReport>? future;
-  final int months;
-  final ValueChanged<int?> onMonthsChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (future == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return FutureBuilder<OwnerFinancialReport>(
-      future: future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError || snapshot.data == null) {
-          return _ErrorState(
-            message: _friendlyError(snapshot.error),
-            onRetry: () {},
-          );
-        }
-
-        final report = snapshot.data!;
-        final summary = report.summary;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = (constraints.maxWidth - 12) / 2;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            DropdownButtonFormField<int>(
-              initialValue: months,
-              decoration: const InputDecoration(labelText: 'Periode laporan'),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('1 bulan')),
-                DropdownMenuItem(value: 3, child: Text('3 bulan')),
-                DropdownMenuItem(value: 6, child: Text('6 bulan')),
-                DropdownMenuItem(value: 12, child: Text('12 bulan')),
-              ],
-              onChanged: onMonthsChanged,
-            ),
-            const SizedBox(height: 14),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.2,
-              children: [
-                _MoneyKpi(
-                  title: 'Total Tagihan',
-                  value: formatRupiah(summary.totalBill),
-                  icon: Icons.receipt_long_outlined,
-                ),
-                _MoneyKpi(
-                  title: 'Total Dibayar',
-                  value: formatRupiah(summary.totalPaid),
-                  icon: Icons.payments_outlined,
-                ),
-                _MoneyKpi(
-                  title: 'Tunggakan',
-                  value: formatRupiah(summary.outstanding),
-                  icon: Icons.warning_amber_rounded,
-                ),
-                _MoneyKpi(
-                  title: 'Rasio Dibayar',
-                  value: (summary.paidRatio * 100).toStringAsFixed(0) + '%',
-                  icon: Icons.donut_small_outlined,
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'Ringkasan per bulan',
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            if (report.monthly.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(26),
-                  child: Center(
-                    child: Text(
-                      'Belum ada data pembayaran pada periode ini.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              )
-            else
-              Card(
-                child: Column(
-                  children: report.monthly
-                      .map(
-                        (row) => ListTile(
-                          title: Text(row.period),
-                          subtitle: Text(
-                            'Tagihan ' +
-                                formatRupiah(row.amountDue) +
-                                ' · Tunggakan ' +
-                                formatRupiah(row.outstanding),
-                          ),
-                          trailing: Text(
-                            formatRupiah(row.amountPaid),
-                            style: Theme.of(context).textTheme.labelLarge
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
+            SizedBox(
+              width: w,
+              child: _KpiCard(
+                icon: Icons.percent,
+                title: 'Okupansi',
+                value: '${report.occupancyRate}%',
+                detail:
+                    '${report.occupiedRooms} dari ${report.totalRooms} kamar',
               ),
+            ),
+            SizedBox(
+              width: w,
+              child: _KpiCard(
+                icon: Icons.meeting_room_outlined,
+                title: 'Kamar kosong',
+                value: '${report.availableRooms}',
+                detail: 'Siap dihuni',
+              ),
+            ),
+            SizedBox(
+              width: w,
+              child: _KpiCard(
+                icon: Icons.home_repair_service_outlined,
+                title: 'Maintenance',
+                value: '${report.maintenanceRooms}',
+                detail: 'Kamar dalam perbaikan',
+              ),
+            ),
+            SizedBox(
+              width: w,
+              child: _KpiCard(
+                icon: Icons.pending_actions_outlined,
+                title: 'Laporan aktif',
+                value: '${report.activeMaintenance.length}',
+                detail: 'Perlu tindakan',
+              ),
+            ),
           ],
         );
       },
@@ -478,8 +388,8 @@ class _FinancialView extends StatelessWidget {
   }
 }
 
-class _Kpi extends StatelessWidget {
-  const _Kpi({
+class _KpiCard extends StatelessWidget {
+  const _KpiCard({
     required this.icon,
     required this.title,
     required this.value,
@@ -493,22 +403,50 @@ class _Kpi extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon),
-            const Spacer(),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: scheme.primary, size: 20),
+            ),
+            const SizedBox(height: 12),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, fontSize: 17),
             ),
-            Text(title, style: Theme.of(context).textTheme.bodySmall),
-            if (detail != null)
-              Text(detail!, style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: 2),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant),
+            ),
+            if (detail != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                detail!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11, color: scheme.onSurfaceVariant),
+              ),
+            ],
           ],
         ),
       ),
@@ -516,38 +454,171 @@ class _Kpi extends StatelessWidget {
   }
 }
 
-class _MoneyKpi extends StatelessWidget {
-  const _MoneyKpi({
-    required this.title,
-    required this.value,
-    required this.icon,
+class _FinancialView extends StatelessWidget {
+  const _FinancialView({
+    required this.future,
+    required this.months,
+    required this.onMonthsChanged,
+    required this.onRetry,
   });
 
-  final String title;
-  final String value;
-  final IconData icon;
+  final Future<OwnerFinancialReport>? future;
+  final int months;
+  final ValueChanged<int?> onMonthsChanged;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
+    if (future == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return FutureBuilder<OwnerFinancialReport>(
+      future: future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        if (snapshot.hasError || snapshot.data == null) {
+          return AppErrorState(
+            message: _friendlyError(snapshot.error),
+            onRetry: onRetry,
+          );
+        }
+
+        final report = snapshot.data!;
+        final summary = report.summary;
+
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon),
-            const Spacer(),
-            Text(
-              value,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
+            DropdownButtonFormField<int>(
+              initialValue: months,
+              isExpanded: true,
+              decoration:
+                  const InputDecoration(labelText: 'Periode laporan'),
+              items: const [
+                DropdownMenuItem(
+                    value: 1,
+                    child: Text('1 bulan',
+                        maxLines: 1, overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: 3,
+                    child: Text('3 bulan',
+                        maxLines: 1, overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: 6,
+                    child: Text('6 bulan',
+                        maxLines: 1, overflow: TextOverflow.ellipsis)),
+                DropdownMenuItem(
+                    value: 12,
+                    child: Text('12 bulan',
+                        maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: onMonthsChanged,
             ),
-            Text(title, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 14),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final w = (constraints.maxWidth - 12) / 2;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: w,
+                      child: _KpiCard(
+                        icon: Icons.receipt_long_outlined,
+                        title: 'Total Tagihan',
+                        value: formatRupiah(summary.totalBill),
+                      ),
+                    ),
+                    SizedBox(
+                      width: w,
+                      child: _KpiCard(
+                        icon: Icons.payments_outlined,
+                        title: 'Total Dibayar',
+                        value: formatRupiah(summary.totalPaid),
+                      ),
+                    ),
+                    SizedBox(
+                      width: w,
+                      child: _KpiCard(
+                        icon: Icons.warning_amber_rounded,
+                        title: 'Tunggakan',
+                        value: formatRupiah(summary.outstanding),
+                      ),
+                    ),
+                    SizedBox(
+                      width: w,
+                      child: _KpiCard(
+                        icon: Icons.donut_small_outlined,
+                        title: 'Rasio Dibayar',
+                        value:
+                            '${(summary.paidRatio * 100).toStringAsFixed(0)}%',
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            const Text('Rincian per bulan',
+                style:
+                    TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            const SizedBox(height: 8),
+            if (report.monthly.isEmpty)
+              const AppEmptyState(
+                icon: Icons.bar_chart_outlined,
+                title: 'Belum ada data',
+                message: 'Belum ada pembayaran pada periode ini.',
+              )
+            else
+              Card(
+                child: Column(
+                  children: report.monthly
+                      .map(
+                        (row) => ListTile(
+                          dense: true,
+                          title: Text(row.period,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                          subtitle: Text(
+                            'Tagihan ${formatRupiah(row.amountDue)} · Tunggakan ${formatRupiah(row.outstanding)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: ConstrainedBox(
+                            constraints:
+                                const BoxConstraints(maxWidth: 120),
+                            child: Text(
+                              formatRupiah(row.amountPaid),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -565,9 +636,10 @@ class _MaintenanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -576,94 +648,57 @@ class _MaintenanceCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     report.title,
-                    style: Theme.of(context).textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w800),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
-                _Badge(label: maintenanceStatusLabel(report.status)),
+                const SizedBox(width: 8),
+                AppStatusChip(
+                  label: maintenanceStatusLabel(report.status),
+                  tone: maintenanceTone(report.status),
+                ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
-              (report.roomNumber == null
-                      ? 'Kamar -'
-                      : 'Kamar ' + report.roomNumber!) +
-                  ' · ' +
-                  (report.tenantName ?? 'Penghuni') +
-                  ' · ' +
-                  maintenanceCategoryLabel(report.category),
-              style: Theme.of(context).textTheme.bodySmall,
+              '${report.roomNumber == null ? 'Kamar -' : 'Kamar ${report.roomNumber}'} · ${report.tenantName ?? 'Penghuni'} · ${maintenanceCategoryLabel(report.category)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 12, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 6),
-            Text(report.description),
-            const SizedBox(height: 8),
+            Text(
+              report.description,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
-                Icon(
-                  Icons.flag_outlined,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(Icons.flag_outlined,
+                    size: 16, color: scheme.primary),
                 const SizedBox(width: 5),
-                Text(
-                  'Prioritas ' + maintenancePriorityLabel(report.priority),
-                  style: Theme.of(context).textTheme.labelSmall,
+                Expanded(
+                  child: Text(
+                    'Prioritas ${maintenancePriorityLabel(report.priority)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12, color: scheme.onSurfaceVariant),
+                  ),
                 ),
-                const Spacer(),
-                if (actions.isNotEmpty)
+                if (actions.isNotEmpty) ...[
+                  const SizedBox(width: 8),
                   FilledButton.tonal(
                     onPressed: () => onAdvance(actions.first.$1),
                     child: Text(actions.first.$2),
                   ),
+                ],
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 48),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Coba lagi'),
             ),
           ],
         ),

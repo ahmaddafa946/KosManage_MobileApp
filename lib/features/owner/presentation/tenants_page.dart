@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
+import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
 
 class TenantsPage extends ConsumerStatefulWidget {
@@ -40,7 +41,7 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
       await ref
           .read(ownerTenantsRepositoryProvider)
           .deactivateTenant(tenant.id, endDate: _dateValue(date));
-      setState(() {});
+      if (mounted) setState(() {});
     } catch (error) {
       _showError(error);
     }
@@ -50,17 +51,21 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Hapus ' + tenant.name + '?'),
+        title: Text('Hapus ${tenant.name}?'),
         content: const Text(
-          'Gunakan arsip/nonaktif untuk menjaga histori pembayaran. '
-          'Penghapusan permanen sebaiknya hanya untuk data yang memang tidak dibutuhkan.',
+          'Hapus permanen akan menghilangkan riwayat penghuni. '
+          'Gunakan Checkout untuk menonaktifkan dengan aman.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Batal'),
           ),
-          FilledButton.tonal(
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Hapus'),
           ),
@@ -71,20 +76,26 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
 
     try {
       await ref.read(ownerTenantsRepositoryProvider).deleteTenant(tenant.id);
-      setState(() {});
+      if (mounted) setState(() {});
     } catch (error) {
       _showError(error);
     }
   }
 
   void _showError(Object error) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(_friendlyError(error))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_friendlyError(error)),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(ownerTenantsRepositoryProvider);
+    final scheme = Theme.of(context).colorScheme;
+
     return FutureBuilder<OwnerProperty>(
       future: ref.watch(ownerPropertyProvider.future),
       builder: (context, propertySnapshot) {
@@ -92,7 +103,7 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
           return const Center(child: CircularProgressIndicator());
         }
         if (propertySnapshot.hasError || propertySnapshot.data == null) {
-          return _ErrorState(
+          return AppErrorState(
             message: _friendlyError(propertySnapshot.error),
             onRetry: () => setState(() {}),
           );
@@ -105,7 +116,7 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return _ErrorState(
+              return AppErrorState(
                 message: _friendlyError(snapshot.error),
                 onRetry: () => setState(() {}),
               );
@@ -117,50 +128,70 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                 children: [
-                  TextField(
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
-                      hintText: 'Cari nama atau nomor HP...',
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              property.name,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${items.length} penghuni ditemukan',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => _openForm(),
+                        icon: const Icon(Icons.person_add_outlined, size: 18),
+                        label: const Text('Tambah'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  AppSearchField(
+                    hint: 'Cari nama atau nomor HP...',
                     onChanged: (value) => setState(() => _query = value),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _filter('Semua', 'all'),
-                        _filter('Aktif', 'active'),
-                        _filter('Tidak aktif', 'inactive'),
+                        _filterChip('Semua', 'all'),
+                        _filterChip('Aktif', 'active'),
+                        _filterChip('Tidak aktif', 'inactive'),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: FilledButton.icon(
-                      onPressed: () => _openForm(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Tambah Penghuni'),
                     ),
                   ),
                   const SizedBox(height: 16),
                   if (items.isEmpty)
-                    _EmptyState(
+                    AppEmptyState(
                       icon: Icons.people_outline,
-                      title: 'Belum ada penghuni',
-                      message:
-                          'Tambahkan penghuni dan pilih kamar yang tersedia.',
+                      title: 'Tidak ada penghuni',
+                      message: _query.isNotEmpty || _status != 'all'
+                          ? 'Tidak ada penghuni sesuai filter saat ini.'
+                          : 'Tambahkan penghuni dan tempatkan ke kamar kosong.',
                       action: FilledButton.icon(
                         onPressed: () => _openForm(),
-                        icon: const Icon(Icons.add),
+                        icon: const Icon(Icons.add, size: 18),
                         label: const Text('Tambah Penghuni'),
                       ),
                     )
                   else
                     ...items.map(
                       (tenant) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: _TenantCard(
                           tenant: tenant,
                           onTap: () => _showDetail(tenant),
@@ -181,10 +212,10 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
     );
   }
 
-  Widget _filter(String label, String value) {
+  Widget _filterChip(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
+      child: FilterChip(
         label: Text(label),
         selected: _status == value,
         onSelected: (_) => setState(() => _status = value),
@@ -199,47 +230,53 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
       showDragHandle: true,
       isScrollControlled: true,
       builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Wrap(
-            runSpacing: 12,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       tenant.name,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                     ),
                   ),
-                  _Badge(label: tenantStatusLabel(tenant.status)),
+                  const SizedBox(width: 8),
+                  AppStatusChip(
+                    label: tenantStatusLabel(tenant.status),
+                    tone: tenantTone(tenant.status),
+                  ),
                 ],
               ),
-              _Line(label: 'Kamar', value: tenant.roomNumber ?? 'Belum ada'),
-              _Line(label: 'No. HP', value: tenant.phone ?? '-'),
-              _Line(label: 'Email', value: tenant.email ?? '-'),
-              _Line(label: 'NIK', value: tenant.identityNumber ?? '-'),
-              _Line(label: 'Mulai sewa', value: formatDateId(tenant.startDate)),
-              _Line(label: 'Berakhir', value: formatDateId(tenant.endDate)),
-              _Line(
-                label: 'Countdown',
-                value: tenant.status == 'active'
-                    ? countdown.label
-                    : 'Tidak aktif',
+              const SizedBox(height: 16),
+              _DetailRow(label: 'Kamar', value: tenant.roomNumber == null ? 'Belum ditempatkan' : 'Kamar ${tenant.roomNumber}'),
+              _DetailRow(label: 'No. HP', value: tenant.phone ?? '-'),
+              _DetailRow(label: 'Email', value: tenant.email ?? '-'),
+              _DetailRow(label: 'NIK', value: tenant.identityNumber ?? '-'),
+              _DetailRow(label: 'Mulai sewa', value: formatDateId(tenant.startDate)),
+              _DetailRow(label: 'Berakhir', value: formatDateId(tenant.endDate)),
+              _DetailRow(
+                label: 'Sisa sewa',
+                value: tenant.status == 'active' ? countdown.label : 'Tidak aktif',
               ),
-              _Line(
+              _DetailRow(
                 label: 'Harga',
-                value: formatRupiah(tenant.rentPrice ?? 0) + ' / bulan',
+                value: '${formatRupiah(tenant.rentPrice ?? 0)} / bulan',
               ),
-              _Line(
+              _DetailRow(
                 label: 'Deposit',
-                value: tenant.deposit == null
-                    ? '-'
-                    : formatRupiah(tenant.deposit!),
+                value: tenant.deposit == null ? '-' : formatRupiah(tenant.deposit!),
               ),
               if (tenant.notes?.isNotEmpty == true)
-                _Line(label: 'Catatan', value: tenant.notes!),
+                _DetailRow(label: 'Catatan', value: tenant.notes!),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
@@ -248,19 +285,19 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
                         Navigator.pop(context);
                         _openForm(tenant: tenant);
                       },
-                      icon: const Icon(Icons.edit_outlined),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
                       label: const Text('Ubah'),
                     ),
                   ),
                   if (tenant.status == 'active') ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {
                           Navigator.pop(context);
                           _deactivate(tenant);
                         },
-                        icon: const Icon(Icons.person_remove_outlined),
+                        icon: const Icon(Icons.person_remove_outlined, size: 18),
                         label: const Text('Checkout'),
                       ),
                     ),
@@ -270,6 +307,36 @@ class _TenantsPageState extends ConsumerState<TenantsPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 95,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
     );
   }
@@ -429,34 +496,51 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       title: Text(widget.tenant == null ? 'Tambah Penghuni' : 'Ubah Penghuni'),
-      content: SizedBox(
-        width: 500,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 500,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: _name,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(labelText: 'Nama lengkap'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String?>(
                 initialValue: _roomId,
+                isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Kamar'),
+                selectedItemBuilder: (context) => [
+                  const Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ..._rooms.map(
+                    (room) => Text(
+                      '${room.roomNumber} · ${formatRupiah(room.price)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
                 items: [
                   const DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('Tanpa kamar'),
+                    child: Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                   ..._rooms.map(
                     (room) => DropdownMenuItem<String?>(
                       value: room.id,
                       child: Text(
-                        room.roomNumber +
-                            ' · ' +
-                            formatRupiah(room.price) +
-                            ' / bulan',
+                        '${room.roomNumber} · ${formatRupiah(room.price)} / bulan',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
@@ -465,66 +549,94 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
                     ? null
                     : (value) => setState(() => _roomId = value),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               TextField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(labelText: 'No. HP'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               TextField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(labelText: 'Email'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               TextField(
                 controller: _identity,
+                keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'NIK'),
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _DateField(
-                      label: 'Mulai sewa',
-                      controller: _start,
-                      onTap: () => _pick(_start),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _DateField(
-                      label: 'Berakhir',
-                      controller: _end,
-                      onTap: () => _pick(_end),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _rent,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Harga sewa / bulan',
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final narrow = constraints.maxWidth < 340;
+                  if (narrow) {
+                    return Column(
+                      children: [
+                        _DateField(label: 'Mulai sewa', controller: _start, onTap: () => _pick(_start)),
+                        const SizedBox(height: 12),
+                        _DateField(label: 'Berakhir (opsional)', controller: _end, onTap: () => _pick(_end)),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: _DateField(
+                          label: 'Mulai sewa',
+                          controller: _start,
+                          onTap: () => _pick(_start),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: _deposit,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Deposit'),
-                    ),
-                  ),
-                ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _DateField(
+                          label: 'Berakhir',
+                          controller: _end,
+                          onTap: () => _pick(_end),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth < 340) {
+                    return Column(
+                      children: [
+                        TextField(controller: _rent, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Harga sewa / bulan')),
+                        const SizedBox(height: 12),
+                        TextField(controller: _deposit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit')),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _rent,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Harga sewa / bulan',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _deposit,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Deposit'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: _notes,
                 maxLines: 2,
@@ -537,6 +649,7 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
                     _error!,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -576,19 +689,26 @@ class _TenantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final countdown = rentalCountdown(tenant.endDate);
-    final initial = tenant.name.isEmpty
-        ? '?'
-        : tenant.name.substring(0, 1).toUpperCase();
+    final scheme = Theme.of(context).colorScheme;
+    final initial = tenant.name.isEmpty ? '?' : tenant.name.substring(0, 1).toUpperCase();
 
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+          padding: const EdgeInsets.all(16),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(child: Text(initial)),
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: scheme.primaryContainer,
+                child: Text(
+                  initial,
+                  style: TextStyle(fontWeight: FontWeight.w800, color: scheme.onPrimaryContainer),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -601,34 +721,37 @@ class _TenantCard extends StatelessWidget {
                             tenant.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                           ),
                         ),
-                        _Badge(label: tenantStatusLabel(tenant.status)),
+                        const SizedBox(width: 8),
+                        AppStatusChip(label: tenantStatusLabel(tenant.status), tone: tenantTone(tenant.status)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      tenant.roomNumber == null
-                          ? 'Belum ada kamar'
-                          : 'Kamar ' + tenant.roomNumber!,
+                      tenant.roomNumber == null ? 'Belum ada kamar' : 'Kamar ${tenant.roomNumber}',
+                      style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      formatRupiah(tenant.rentPrice ?? 0) +
-                          ' / bulan · ' +
-                          (tenant.phone ?? '-'),
-                      style: Theme.of(context).textTheme.bodySmall,
+                      '${formatRupiah(tenant.rentPrice ?? 0)} / bln · ${tenant.phone ?? '-'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
                     ),
-                    if (tenant.status == 'active')
+                    if (tenant.status == 'active') ...[
+                      const SizedBox(height: 4),
                       Text(
                         countdown.label,
-                        style: Theme.of(context).textTheme.labelSmall,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: scheme.primary),
                       ),
+                    ],
                   ],
                 ),
               ),
               PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, size: 20, color: scheme.onSurfaceVariant),
                 onSelected: (value) {
                   if (value == 'edit') onEdit();
                   if (value == 'checkout') onDeactivate?.call();
@@ -637,10 +760,7 @@ class _TenantCard extends StatelessWidget {
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'edit', child: Text('Ubah')),
                   if (onDeactivate != null)
-                    const PopupMenuItem(
-                      value: 'checkout',
-                      child: Text('Checkout'),
-                    ),
+                    const PopupMenuItem(value: 'checkout', child: Text('Checkout')),
                   const PopupMenuItem(value: 'delete', child: Text('Hapus')),
                 ],
               ),
@@ -671,122 +791,14 @@ class _DateField extends StatelessWidget {
       onTap: onTap,
       decoration: InputDecoration(
         labelText: label,
-        suffixIcon: const Icon(Icons.calendar_today_outlined, size: 19),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
-    );
-  }
-}
-
-class _Line extends StatelessWidget {
-  const _Line({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: 90, child: Text(label)),
-        Expanded(child: Text(value)),
-      ],
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.action,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final Widget action;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          children: [
-            Icon(icon, size: 44),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 5),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            action,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_outlined, size: 48),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Coba lagi'),
-            ),
-          ],
-        ),
+        suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
       ),
     );
   }
 }
 
 String _dateValue(DateTime value) {
-  return value.year.toString().padLeft(4, '0') +
-      '-' +
-      value.month.toString().padLeft(2, '0') +
-      '-' +
-      value.day.toString().padLeft(2, '0');
+  return '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 }
 
 String _friendlyError(Object? error) {
