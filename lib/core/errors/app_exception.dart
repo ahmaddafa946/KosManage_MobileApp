@@ -11,6 +11,12 @@ class AuthenticationException extends AppException {
   const AuthenticationException([super.message = 'Autentikasi gagal.']);
 }
 
+class SessionException extends AppException {
+  const SessionException([
+    super.message = 'Sesi login tidak tersedia. Silakan masuk kembali.',
+  ]);
+}
+
 class AuthorizationException extends AppException {
   const AuthorizationException([super.message = 'Anda tidak memiliki akses.']);
 }
