@@ -47,8 +47,6 @@ String paymentMethodLabel(String? method) {
       return 'Transfer';
     case 'ewallet':
       return 'E-Wallet';
-    case 'qris':
-      return 'QRIS';
     default:
       return '-';
   }

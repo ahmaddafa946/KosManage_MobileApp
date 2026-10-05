@@ -37,11 +37,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           );
       if (!mounted) return;
       context.go('/home');
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Email atau kata sandi tidak valid.'),
+          content: Text(_loginErrorMessage(error)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -51,6 +51,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void _useDemoAccount() {
     _emailController.text = 'owner@kosmanage.dev';
     _passwordController.text = 'KosManage!dev1';
+  }
+
+  String _loginErrorMessage(Object error) {
+    final text = error.toString().toLowerCase();
+    if (text.contains('invalid login') ||
+        text.contains('invalid_credentials') ||
+        text.contains('email not confirmed')) {
+      return 'Email atau kata sandi tidak valid.';
+    }
+    if (text.contains('network') ||
+        text.contains('socket') ||
+        text.contains('timeout') ||
+        text.contains('failed host')) {
+      return 'Koneksi internet bermasalah. Coba lagi.';
+    }
+    if (text.contains('supabase_url') ||
+        text.contains('supabase_anon_key') ||
+        text.contains('not initialized')) {
+      return 'Konfigurasi Supabase belum benar di perangkat ini.';
+    }
+    return 'Login gagal. Periksa kredensial dan koneksi.';
   }
 
   @override

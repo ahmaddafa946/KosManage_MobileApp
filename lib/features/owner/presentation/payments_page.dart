@@ -651,10 +651,6 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
                       value: 'ewallet',
                       child: Text('E-Wallet',
                           maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  DropdownMenuItem(
-                      value: 'qris',
-                      child: Text('QRIS',
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
                 onChanged: _loading
                     ? null

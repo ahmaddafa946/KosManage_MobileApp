@@ -8,7 +8,8 @@ void main() {
     expect(roomStatusLabel('occupied'), 'Terisi');
     expect(roomStatusLabel('maintenance'), 'Maintenance');
     expect(paymentStatusLabel('partial'), 'Sebagian');
-    expect(paymentMethodLabel('qris'), 'QRIS');
+    // ponytail: DB only allows cash/transfer/ewallet; qris stays unsupported.
+    expect(paymentMethodLabel('qris'), '-');
   });
 
   test('calculates rental countdown buckets from date-only values', () {

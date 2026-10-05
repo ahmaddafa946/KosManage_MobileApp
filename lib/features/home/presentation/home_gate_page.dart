@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/errors/app_exception.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../domain/models/app_role.dart';
 import '../../../domain/models/user_profile.dart';
@@ -17,10 +18,26 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
 final currentProfileProvider = FutureProvider<UserProfile>((ref) async {
   final session = ref.read(authRepositoryProvider).currentSession;
   if (session == null) {
-    throw StateError('Tidak ada sesi login.');
+    throw const SessionException();
   }
   return ref.read(profileRepositoryProvider).getCurrentProfile(session.user.id);
 });
+
+String profileErrorMessage(Object error) {
+  if (error is SessionException) return error.message;
+  if (error is NotFoundException) return error.message;
+  if (error is AuthorizationException) return error.message;
+  if (error is ValidationException) return error.message;
+  if (error is NetworkException) return error.message;
+  final text = error.toString().toLowerCase();
+  if (text.contains('network') ||
+      text.contains('socket') ||
+      text.contains('timeout') ||
+      text.contains('failed host')) {
+    return const NetworkException().message;
+  }
+  return 'Periksa profile dan koneksi Supabase.';
+}
 
 class HomeGatePage extends ConsumerWidget {
   const HomeGatePage({super.key});
@@ -48,15 +65,14 @@ class HomeGatePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  error is StateError
-                      ? error.message
-                      : 'Periksa profile dan koneksi Supabase.',
+                  profileErrorMessage(error),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
                 FilledButton(
                   onPressed: () async {
                     await ref.read(authControllerProvider.notifier).signOut();
+                    ref.invalidate(currentProfileProvider);
                     if (context.mounted) context.go('/login');
                   },
                   child: const Text('Kembali ke Login'),

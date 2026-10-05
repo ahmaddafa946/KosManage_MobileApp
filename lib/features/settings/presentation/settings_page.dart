@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../domain/models/app_role.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../home/presentation/home_gate_page.dart';
+import '../../tenant/presentation/tenant_shell_page.dart';
 import 'theme_controller.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -39,15 +40,19 @@ class SettingsPage extends ConsumerWidget {
     if (confirmed == true && context.mounted) {
       try {
         await ref.read(authControllerProvider.notifier).signOut();
-        ref.invalidate(currentProfileProvider);
+        ref
+          ..invalidate(currentProfileProvider)
+          ..invalidate(currentTenantProvider);
         if (context.mounted) {
           context.go('/login');
         }
-      } catch (e) {
+      } catch (_) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Gagal logout: $e'),
+              content: const Text(
+                'Logout gagal. Periksa koneksi lalu coba lagi.',
+              ),
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );

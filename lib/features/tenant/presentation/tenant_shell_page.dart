@@ -7,7 +7,6 @@ import '../../../data/repositories/tenant_repository.dart';
 import '../../../domain/models/owner_management.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../domain/services/owner_display.dart';
-import '../../home/presentation/home_gate_page.dart';
 import '../../settings/presentation/settings_page.dart';
 import '../../shared/presentation/app_ui.dart';
 
@@ -17,15 +16,21 @@ final tenantRepositoryProvider = Provider<TenantRepository>((ref) {
 
 final currentTenantProvider =
     FutureProvider.autoDispose<MyTenant?>((ref) async {
-  final session = Supabase.instance.client.auth.currentSession;
-  final email = session?.user.email;
-  if (email == null || email.isEmpty) return null;
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) return null;
   try {
-    return await ref
-        .read(tenantRepositoryProvider)
-        .getMyTenantByEmail(email);
+    // ponytail: identity via tenants.profile_id; email only as fallback.
+    return await ref.read(tenantRepositoryProvider).getMyTenant(user.id);
   } catch (_) {
-    return null;
+    final email = user.email;
+    if (email == null || email.isEmpty) return null;
+    try {
+      return await ref
+          .read(tenantRepositoryProvider)
+          .getMyTenantByEmail(email);
+    } catch (_) {
+      return null;
+    }
   }
 });
 
@@ -295,12 +300,9 @@ class TenantHome extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           OutlinedButton.icon(
-            onPressed: () {
-              ref.invalidate(currentProfileProvider);
-              context.push('/settings');
-            },
+            onPressed: () => context.push('/settings'),
             icon: const Icon(Icons.person_outline, size: 18),
-            label: const Text('Profil & Keluar'),
+            label: const Text('Profil & Pengaturan'),
           ),
         ],
       ),

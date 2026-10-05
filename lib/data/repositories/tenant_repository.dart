@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/errors/app_exception.dart';
 import '../../domain/models/owner_management.dart';
 
 class MyTenant {
@@ -12,6 +13,7 @@ class MyTenant {
 }
 
 abstract interface class TenantRepository {
+  Future<MyTenant> getMyTenant(String profileId);
   Future<MyTenant> getMyTenantByEmail(String email);
   Future<List<OwnerPayment>> getMyPayments(String propertyId, String tenantId);
   Future<List<OwnerMaintenanceReport>> getMyReports(String tenantId);
@@ -33,10 +35,35 @@ class SupabaseTenantRepository implements TenantRepository {
   final SupabaseClient _client;
 
   @override
+  Future<MyTenant> getMyTenant(String profileId) async {
+    final clean = profileId.trim();
+    if (clean.isEmpty) {
+      throw const SessionException();
+    }
+    final row = await _client
+        .from('tenants')
+        .select(
+          '*, room:rooms!tenants_room_id_fkey(id,room_number,status,price)',
+        )
+        .eq('profile_id', clean)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+
+    if (row == null) {
+      throw const NotFoundException(
+        'Data penghuni untuk akun ini belum terdaftar. Hubungi pemilik kos.',
+      );
+    }
+    return _toMyTenant(row);
+  }
+
+  @override
   Future<MyTenant> getMyTenantByEmail(String email) async {
+    // ponytail: legacy email fallback until tenants.profile_id is linked.
     final clean = email.trim();
     if (clean.isEmpty) {
-      throw StateError('Email akun tidak tersedia.');
+      throw const SessionException();
     }
     final row = await _client
         .from('tenants')
@@ -49,13 +76,19 @@ class SupabaseTenantRepository implements TenantRepository {
         .maybeSingle();
 
     if (row == null) {
-      throw StateError(
+      throw const NotFoundException(
         'Data penghuni untuk akun ini belum terdaftar. Hubungi pemilik kos.',
       );
     }
+    return _toMyTenant(row);
+  }
+
+  MyTenant _toMyTenant(Map<String, dynamic> row) {
     final propertyId = row['property_id'] as String?;
     if (propertyId == null) {
-      throw StateError('Data properti penghuni tidak lengkap.');
+      throw const ValidationException(
+        'Data properti penghuni tidak lengkap.',
+      );
     }
     return MyTenant(
       tenant: OwnerTenant.fromJson(row),
@@ -112,33 +145,37 @@ class SupabaseTenantRepository implements TenantRepository {
     required String priority,
     File? photo,
   }) async {
-    String? imagePath;
+    final reportRow = await _client
+        .from('maintenance_reports')
+        .insert({
+          'property_id': propertyId,
+          'tenant_id': tenantId,
+          'room_id': roomId,
+          'title': title.trim(),
+          'description': description.trim(),
+          'category': category,
+          'priority': priority,
+          'status': 'submitted',
+        })
+        .select('id')
+        .single();
+    final reportId = reportRow['id'] as String;
+
     if (photo != null) {
       final name = photo.path.split(Platform.pathSeparator).last;
       final clean = name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      // Storage policy requires property/tenant/report 3-segment path.
       final path =
-          '$propertyId/$tenantId/${DateTime.now().millisecondsSinceEpoch}_$clean';
+          '$propertyId/$tenantId/$reportId/${DateTime.now().millisecondsSinceEpoch}_$clean';
       await _client.storage.from('maintenance-reports').upload(
             path,
             photo,
             fileOptions: const FileOptions(upsert: true),
           );
-      imagePath = path;
+      await _client
+          .from('maintenance_reports')
+          .update({'image_url': path})
+          .eq('id', reportId);
     }
-
-    final payload = <String, dynamic>{
-      'property_id': propertyId,
-      'tenant_id': tenantId,
-      'room_id': roomId,
-      'title': title.trim(),
-      'description': description.trim(),
-      'category': category,
-      'priority': priority,
-      'status': 'submitted',
-      'image_url': imagePath,
-    };
-    payload.removeWhere((key, value) => value == null);
-
-    await _client.from('maintenance_reports').insert(payload);
   }
 }
