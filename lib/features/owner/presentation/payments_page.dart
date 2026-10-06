@@ -555,144 +555,144 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-        widget.payment == null ? 'Catat Pembayaran' : 'Ubah Pembayaran',
-      ),
+                  widget.payment == null ? 'Catat Pembayaran' : 'Ubah Pembayaran',
+                ),
               ),
             ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                 child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              OwnerTenantDropdownField(
-                tenants: widget.tenants,
-                value: _tenantId,
-                enabled: !_loading,
-                onChanged: (value) => setState(() => _tenantId = value),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _period,
-                decoration: const InputDecoration(
-                  labelText: 'Periode',
-                  hintText: 'YYYY-MM',
-                ),
-              ),
-              const SizedBox(height: 12),
-              _DateField(
-                label: 'Jatuh tempo',
-                controller: _due,
-                onTap: () => _pickDate(_due),
-              ),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 340) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextField(
-                          controller: _amountDue,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                              labelText: 'Tagihan (Rp)'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _amountPaid,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                              labelText: 'Dibayar (Rp)'),
-                        ),
-                      ],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _amountDue,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                              labelText: 'Tagihan (Rp)'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _amountPaid,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                              labelText: 'Dibayar (Rp)'),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _DateField(
-                label: 'Tanggal bayar (opsional)',
-                controller: _paymentDate,
-                onTap: () => _pickDate(_paymentDate),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _method,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Metode'),
-                items: const [
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('Belum dipilih',
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                  DropdownMenuItem(
-                      value: 'cash',
-                      child: Text('Cash',
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  DropdownMenuItem(
-                      value: 'transfer',
-                      child: Text('Transfer',
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  DropdownMenuItem(
-                      value: 'ewallet',
-                      child: Text('E-Wallet',
-                          maxLines: 1, overflow: TextOverflow.ellipsis)),
-                ],
-                onChanged: _loading
-                    ? null
-                    : (value) => setState(() => _method = value),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _notes,
-                maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Catatan'),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Status dihitung otomatis dari nominal.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontWeight: FontWeight.w600,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OwnerTenantDropdownField(
+                      tenants: widget.tenants,
+                      value: _tenantId,
+                      enabled: !_loading,
+                      onChanged: (value) => setState(() => _tenantId = value),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _period,
+                      decoration: const InputDecoration(
+                        labelText: 'Periode',
+                        hintText: 'YYYY-MM',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _DateField(
+                      label: 'Jatuh tempo',
+                      controller: _due,
+                      onTap: () => _pickDate(_due),
+                    ),
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 340) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: _amountDue,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                    labelText: 'Tagihan (Rp)'),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _amountPaid,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                    labelText: 'Dibayar (Rp)'),
+                              ),
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _amountDue,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                    labelText: 'Tagihan (Rp)'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _amountPaid,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                    labelText: 'Dibayar (Rp)'),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _DateField(
+                      label: 'Tanggal bayar (opsional)',
+                      controller: _paymentDate,
+                      onTap: () => _pickDate(_paymentDate),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _method,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Metode'),
+                      items: const [
+                        DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Belum dipilih',
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                        DropdownMenuItem(
+                            value: 'cash',
+                            child: Text('Cash',
+                                maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(
+                            value: 'transfer',
+                            child: Text('Transfer',
+                                maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(
+                            value: 'ewallet',
+                            child: Text('E-Wallet',
+                                maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      ],
+                      onChanged: _loading
+                          ? null
+                          : (value) => setState(() => _method = value),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _notes,
+                      maxLines: 2,
+                      decoration: const InputDecoration(labelText: 'Catatan'),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Status dihitung otomatis dari nominal.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-            ],
-          ),
               ),
             ),
             Padding(
@@ -700,15 +700,168 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-        TextButton(
-          onPressed: _loading ? null : () => Navigator.pop(context, false),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: _loading ? null : _submit,
-          child: Text(_loading ? 'Menyimpan...' : 'Simpan'),
-        ),
-      ],
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                  widget.payment == null ? 'Catat Pembayaran' : 'Ubah Pembayaran',
+                ),
+                        ),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                          child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        OwnerTenantDropdownField(
+                          tenants: widget.tenants,
+                          value: _tenantId,
+                          enabled: !_loading,
+                          onChanged: (value) => setState(() => _tenantId = value),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _period,
+                          decoration: const InputDecoration(
+                            labelText: 'Periode',
+                            hintText: 'YYYY-MM',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _DateField(
+                          label: 'Jatuh tempo',
+                          controller: _due,
+                          onTap: () => _pickDate(_due),
+                        ),
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            if (constraints.maxWidth < 340) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  TextField(
+                                    controller: _amountDue,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                        labelText: 'Tagihan (Rp)'),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: _amountPaid,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                        labelText: 'Dibayar (Rp)'),
+                                  ),
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _amountDue,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                        labelText: 'Tagihan (Rp)'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _amountPaid,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                        labelText: 'Dibayar (Rp)'),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _DateField(
+                          label: 'Tanggal bayar (opsional)',
+                          controller: _paymentDate,
+                          onTap: () => _pickDate(_paymentDate),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: _method,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'Metode'),
+                          items: const [
+                            DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Belum dipilih',
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ),
+                            DropdownMenuItem(
+                                value: 'cash',
+                                child: Text('Cash',
+                                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            DropdownMenuItem(
+                                value: 'transfer',
+                                child: Text('Transfer',
+                                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            DropdownMenuItem(
+                                value: 'ewallet',
+                                child: Text('E-Wallet',
+                                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          ],
+                          onChanged: _loading
+                              ? null
+                              : (value) => setState(() => _method = value),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _notes,
+                          maxLines: 2,
+                          decoration: const InputDecoration(labelText: 'Catatan'),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Status dihitung otomatis dari nominal.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (_error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Text(
+                              _error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                  TextButton(
+                    onPressed: _loading ? null : () => Navigator.pop(context, false),
+                    child: const Text('Batal'),
+                  ),
+                  FilledButton(
+                    onPressed: _loading ? null : _submit,
+                    child: Text(_loading ? 'Menyimpan...' : 'Simpan'),
+                  ),
+                ],
+                        ),
+                      ),
+                    ],
               ),
             ),
           ],
