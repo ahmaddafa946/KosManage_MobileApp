@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/auth/role_guard.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/home/presentation/home_gate_page.dart';
 import '../features/settings/presentation/settings_page.dart';
@@ -45,6 +46,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         builder: (context, state) => const SettingsPage(),
       ),
+      // Explicit owner prefixes: blocked at route level, not just hidden UI.
+      GoRoute(
+        path: '/owner/:section',
+        redirect: (context, state) {
+          final profile = ref.read(currentProfileProvider).value;
+          if (profile == null) return '/home';
+          return RoleGuard.resolveRedirect(
+            role: profile.role,
+            requestedPath: '/owner/${state.pathParameters['section']}',
+          );
+        },
+        builder: (context, state) => const HomeGatePage(),
+      ),
     ],
     redirect: (context, state) {
       final isAuthenticated =
@@ -53,6 +67,19 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (!isAuthenticated && !isLogin) return '/login';
       if (isAuthenticated && isLogin) return '/home';
+
+      // ponytail: role-aware redirect guard for any deep linked owner prefix.
+      final profile = ref.read(currentProfileProvider).value;
+      if (profile != null) {
+        final redirectTarget = RoleGuard.resolveRedirect(
+          role: profile.role,
+          requestedPath: state.matchedLocation,
+        );
+        if (redirectTarget != null && redirectTarget != state.matchedLocation) {
+          return redirectTarget;
+        }
+      }
+
       return null;
     },
   );

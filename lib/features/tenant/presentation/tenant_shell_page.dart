@@ -156,6 +156,25 @@ class TenantHome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return _TenantHomeContent(profile: profile);
+  }
+}
+
+class _TenantHomeContent extends ConsumerWidget {
+  const _TenantHomeContent({required this.profile});
+
+  final UserProfile profile;
+
+  String _greeting(DateTime now) {
+    final hour = now.hour;
+    if (hour < 11) return 'Selamat pagi';
+    if (hour < 15) return 'Selamat siang';
+    if (hour < 19) return 'Selamat sore';
+    return 'Selamat malam';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final initial = profile.name.isNotEmpty
         ? profile.name.substring(0, 1).toUpperCase()
@@ -198,7 +217,7 @@ class TenantHome extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Halo, ${profile.name}',
+                        '${_greeting(DateTime.now())}, ${profile.name}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -207,12 +226,21 @@ class TenantHome extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        'Kelola sewa dan tagihan dalam satu tempat.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: scheme.onSurfaceVariant,
-                        ),
+                      const Row(
+                        children: [
+                          AppStatusChip(
+                            label: 'Penghuni Kos',
+                            tone: AppTone.info,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Self-service: kamar, tagihan, bantuan.',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -243,11 +271,17 @@ class TenantHome extends ConsumerWidget {
               }
               final t = myTenant.tenant;
               final countdown = rentalCountdown(t.endDate);
+              final reportsAsync = ref.watch(
+                _tenantReportsProvider(myTenant.tenant.id),
+              );
+              final billsAsync = ref.watch(
+                _tenantRecentPaymentsProvider(myTenant),
+              );
               return Column(
                 children: [
                   AppSectionCard(
-                    title: 'Kamar Anda',
-                    icon: Icons.meeting_room_outlined,
+                    title: 'Status Sewa',
+                    icon: Icons.home_work_outlined,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -258,6 +292,8 @@ class TenantHome extends ConsumerWidget {
                                 t.roomNumber == null
                                     ? 'Belum ada kamar'
                                     : 'Kamar ${t.roomNumber}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
@@ -293,6 +329,10 @@ class TenantHome extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  _TenantNextBill(billsAsync: billsAsync),
+                  const SizedBox(height: 12),
+                  _TenantReportSummary(reportsAsync: reportsAsync),
+                  const SizedBox(height: 12),
                   _TenantRecentPayments(myTenant: myTenant),
                 ],
               );
@@ -318,6 +358,149 @@ class TenantHome extends ConsumerWidget {
       };
 }
 
+final _tenantRecentPaymentsProvider =
+    FutureProvider.autoDispose.family<List<OwnerPayment>, MyTenant>((
+  ref,
+  myTenant,
+) async {
+  return ref
+      .watch(tenantRepositoryProvider)
+      .getMyPayments(myTenant.propertyId, myTenant.tenant.id);
+});
+
+final _tenantReportsProvider =
+    FutureProvider.autoDispose.family<List<OwnerMaintenanceReport>, String>((
+  ref,
+  tenantId,
+) async {
+  return ref.watch(tenantRepositoryProvider).getMyReports(tenantId);
+});
+
+OwnerPayment? nearestUnpaidBill(List<OwnerPayment> bills) {
+  final open = bills
+      .where((bill) => bill.status != 'paid' && bill.dueDate.isNotEmpty)
+      .toList(growable: false)
+    ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+  return open.isEmpty ? null : open.first;
+}
+
+int openReportCount(List<OwnerMaintenanceReport> reports) {
+  return reports
+      .where((report) => report.status == 'submitted' || report.status == 'in_progress')
+      .length;
+}
+
+class _TenantNextBill extends StatelessWidget {
+  const _TenantNextBill({required this.billsAsync});
+
+  final AsyncValue<List<OwnerPayment>> billsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return billsAsync.when(
+      loading: () => const AppSectionCard(
+        title: 'Tagihan Terdekat',
+        icon: Icons.payments_outlined,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      ),
+      error: (_, _) => const AppSectionCard(
+        title: 'Tagihan Terdekat',
+        icon: Icons.payments_outlined,
+        child: Text('Tagihan belum dapat dimuat. Tarik untuk memuat ulang.'),
+      ),
+      data: (bills) {
+        final next = nearestUnpaidBill(bills);
+        if (next == null) {
+          return const AppSectionCard(
+            title: 'Tagihan Terdekat',
+            icon: Icons.payments_outlined,
+            child: Text('Tidak ada tagihan terbuka. Semua lunas.'),
+          );
+        }
+        return AppSectionCard(
+          title: 'Tagihan Terdekat',
+          icon: Icons.payments_outlined,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Periode ${next.billingPeriod}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Jatuh tempo ${formatDateId(next.dueDate)} · ${formatRupiah(next.remaining)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AppStatusChip(
+                label: paymentStatusLabel(next.status),
+                tone: paymentTone(next.status),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TenantReportSummary extends StatelessWidget {
+  const _TenantReportSummary({required this.reportsAsync});
+
+  final AsyncValue<List<OwnerMaintenanceReport>> reportsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    return reportsAsync.when(
+      loading: () => const AppSectionCard(
+        title: 'Ringkasan Keluhan',
+        icon: Icons.handyman_outlined,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      ),
+      error: (_, _) => const AppSectionCard(
+        title: 'Ringkasan Keluhan',
+        icon: Icons.handyman_outlined,
+        child: Text('Keluhan belum dapat dimuat. Tarik untuk memuat ulang.'),
+      ),
+      data: (reports) {
+        final open = openReportCount(reports);
+        return AppSectionCard(
+          title: 'Ringkasan Keluhan',
+          icon: Icons.handyman_outlined,
+          child: Text(
+            reports.isEmpty
+                ? 'Belum ada laporan. Buat laporan bila ada kendala kamar.'
+                : '$open laporan terbuka dari ${reports.length} total laporan.',
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _TenantRecentPayments extends ConsumerWidget {
   const _TenantRecentPayments({required this.myTenant});
 
@@ -325,11 +508,24 @@ class _TenantRecentPayments extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repo = ref.watch(tenantRepositoryProvider);
-    return FutureBuilder<List<OwnerPayment>>(
-      future: repo.getMyPayments(myTenant.propertyId, myTenant.tenant.id),
-      builder: (context, snapshot) {
-        final list = snapshot.data ?? const [];
+    final billsAsync = ref.watch(_tenantRecentPaymentsProvider(myTenant));
+    return billsAsync.when(
+      loading: () => const AppSectionCard(
+        title: 'Tagihan Terbaru',
+        icon: Icons.payments_outlined,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      ),
+      error: (error, _) => AppSectionCard(
+        title: 'Tagihan Terbaru',
+        icon: Icons.payments_outlined,
+        child: Text('Tagihan belum dapat dimuat: $error'),
+      ),
+      data: (list) {
         return AppSectionCard(
           title: 'Tagihan Terbaru',
           icon: Icons.payments_outlined,
@@ -348,6 +544,8 @@ class _TenantRecentPayments extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       title: Text(
                         'Periode ${p.billingPeriod}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       subtitle: Text(
@@ -487,14 +685,16 @@ class _TenantPaymentsTab extends ConsumerWidget {
             ),
           );
         }
-        final repo = ref.watch(tenantRepositoryProvider);
-        return FutureBuilder<List<OwnerPayment>>(
-          future: repo.getMyPayments(myTenant.propertyId, myTenant.tenant.id),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final list = snapshot.data ?? const [];
+        final billsAsync = ref.watch(
+          _tenantRecentPaymentsProvider(myTenant),
+        );
+        return billsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => AppErrorState(
+            message: error.toString(),
+            onRetry: () => ref.invalidate(_tenantRecentPaymentsProvider(myTenant)),
+          ),
+          data: (list) {
             if (list.isEmpty) {
               return const Center(
                 child: AppEmptyState(
@@ -504,55 +704,92 @@ class _TenantPaymentsTab extends ConsumerWidget {
                 ),
               );
             }
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              itemBuilder: (context, index) {
-                final p = list[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Periode ${p.billingPeriod}',
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              AppStatusChip(
-                                label: paymentStatusLabel(p.status),
-                                tone: paymentTone(p.status),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Tagihan: ${formatRupiah(p.amountDue)} · Dibayar: ${formatRupiah(p.amountPaid)}',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                          Text(
-                            'Jatuh tempo: ${formatDateId(p.dueDate)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color:
-                                  Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+            final open = list.where((p) => p.status != 'paid').length;
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: AppSectionCard(
+                    title: 'Tagihan Anda',
+                    icon: Icons.lock_outline,
+                    // ponytail: read-only tenant bills; payment writes stay owner-only.
+                    child: Text(
+                      '$open tagihan terbuka · ${list.length} total · pembayaran resmi dicatat pemilik kos.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: list.length,
+                    itemBuilder: (context, index) {
+                      final p = list[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Periode ${p.billingPeriod}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    AppStatusChip(
+                                      label: paymentStatusLabel(p.status),
+                                      tone: paymentTone(p.status),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Tagihan: ${formatRupiah(p.amountDue)} · Dibayar: ${formatRupiah(p.amountPaid)}',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                Text(
+                                  'Jatuh tempo: ${formatDateId(p.dueDate)}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (p.paymentMethod != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Metode tercatat: ${paymentMethodLabel(p.paymentMethod)}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
           },
         );
@@ -585,14 +822,15 @@ class _TenantMaintenanceTab extends ConsumerWidget {
             ),
           );
         }
-        final repo = ref.watch(tenantRepositoryProvider);
-        return FutureBuilder<List<OwnerMaintenanceReport>>(
-          future: repo.getMyReports(myTenant.tenant.id),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final list = snapshot.data ?? const [];
+        final reportsAsync = ref.watch(_tenantReportsProvider(myTenant.tenant.id));
+        return reportsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => AppErrorState(
+            message: error.toString(),
+            onRetry: () =>
+                ref.invalidate(_tenantReportsProvider(myTenant.tenant.id)),
+          ),
+          data: (list) {
             return Scaffold(
               body: list.isEmpty
                   ? const Center(
@@ -620,6 +858,8 @@ class _TenantMaintenanceTab extends ConsumerWidget {
                                       Expanded(
                                         child: Text(
                                           r.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w800,
@@ -673,121 +913,213 @@ class _TenantMaintenanceTab extends ConsumerWidget {
     WidgetRef ref,
     MyTenant myTenant,
   ) async {
-    final title = TextEditingController();
-    final desc = TextEditingController();
-    String category = 'other';
-    String priority = 'medium';
-    bool loading = false;
-    String? error;
-
-    await showDialog<bool>(
+    final created = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          insetPadding: const EdgeInsets.all(16),
-          title: const Text('Lapor Kerusakan'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: title,
-                    decoration: const InputDecoration(labelText: 'Judul keluhan'),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    initialValue: category,
-                    decoration: const InputDecoration(labelText: 'Kategori'),
-                    items: const [
-                      DropdownMenuItem(value: 'AC', child: Text('AC')),
-                      DropdownMenuItem(value: 'electrical', child: Text('Listrik')),
-                      DropdownMenuItem(value: 'plumbing', child: Text('Plumbing')),
-                      DropdownMenuItem(value: 'furniture', child: Text('Furnitur')),
-                      DropdownMenuItem(value: 'internet', child: Text('Internet')),
-                      DropdownMenuItem(value: 'other', child: Text('Lainnya')),
-                    ],
-                    onChanged: (v) => setDialogState(() => category = v ?? 'other'),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    initialValue: priority,
-                    decoration: const InputDecoration(labelText: 'Prioritas'),
-                    items: const [
-                      DropdownMenuItem(value: 'low', child: Text('Rendah')),
-                      DropdownMenuItem(value: 'medium', child: Text('Sedang')),
-                      DropdownMenuItem(value: 'high', child: Text('Tinggi')),
-                    ],
-                    onChanged: (v) =>
-                        setDialogState(() => priority = v ?? 'medium'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: desc,
-                    maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'Deskripsi keluhan'),
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(dialogContext).colorScheme.error,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
+      builder: (_) => TenantReportDialog(myTenant: myTenant),
+    );
+    if (created == true) {
+      ref.invalidate(_tenantReportsProvider(myTenant.tenant.id));
+    }
+  }
+}
+
+/// Extracted dialog so widget tests can verify anti-overflow constraints.
+class TenantReportDialog extends ConsumerStatefulWidget {
+  const TenantReportDialog({super.key, required this.myTenant});
+
+  final MyTenant myTenant;
+
+  @override
+  ConsumerState<TenantReportDialog> createState() => _TenantReportDialogState();
+}
+
+class _TenantReportDialogState extends ConsumerState<TenantReportDialog> {
+  final _title = TextEditingController();
+  final _desc = TextEditingController();
+  String _category = 'other';
+  String _priority = 'medium';
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _desc.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_title.text.trim().isEmpty || _desc.text.trim().isEmpty) {
+      setState(() => _error = 'Judul dan deskripsi wajib diisi.');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await ref
+          .read(tenantRepositoryProvider)
+          .createReport(
+            propertyId: widget.myTenant.propertyId,
+            tenantId: widget.myTenant.tenant.id,
+            roomId: widget.myTenant.tenant.roomId,
+            title: _title.text.trim(),
+            description: _desc.text.trim(),
+            category: _category,
+            priority: _priority,
+          );
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      setState(() {
+        _loading = false;
+        _error = 'Gagal menyimpan laporan. Periksa koneksi lalu coba lagi.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      title: const Text('Lapor Kerusakan'),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 440,
+          maxHeight: size.height * 0.7,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _title,
+                decoration: const InputDecoration(labelText: 'Judul keluhan'),
               ),
-            ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: _category,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Kategori'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'AC',
+                    child: Text(
+                      'AC',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'electrical',
+                    child: Text(
+                      'Listrik',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'plumbing',
+                    child: Text(
+                      'Plumbing',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'furniture',
+                    child: Text(
+                      'Furnitur',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'internet',
+                    child: Text(
+                      'Internet',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'other',
+                    child: Text(
+                      'Lainnya',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _category = v ?? 'other'),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: _priority,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Prioritas'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'low',
+                    child: Text(
+                      'Rendah',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'medium',
+                    child: Text(
+                      'Sedang',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: 'high',
+                    child: Text(
+                      'Tinggi',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _priority = v ?? 'medium'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _desc,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Deskripsi keluhan',
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: loading ? null : () => Navigator.pop(dialogContext, false),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: loading
-                  ? null
-                  : () async {
-                      if (title.text.trim().isEmpty ||
-                          desc.text.trim().isEmpty) {
-                        setDialogState(
-                            () => error = 'Judul dan deskripsi wajib diisi.');
-                        return;
-                      }
-                      setDialogState(() {
-                        loading = true;
-                        error = null;
-                      });
-                      try {
-                        await ref.read(tenantRepositoryProvider).createReport(
-                              propertyId: myTenant.propertyId,
-                              tenantId: myTenant.tenant.id,
-                              roomId: myTenant.tenant.roomId,
-                              title: title.text.trim(),
-                              description: desc.text.trim(),
-                              category: category,
-                              priority: priority,
-                            );
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext, true);
-                        }
-                      } catch (e) {
-                        setDialogState(() {
-                          loading = false;
-                          error = 'Gagal menyimpan laporan: $e';
-                        });
-                      }
-                    },
-              child: Text(loading ? 'Mengirim...' : 'Kirim'),
-            ),
-          ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: _loading ? null : _submit,
+          child: Text(_loading ? 'Mengirim...' : 'Kirim'),
+        ),
+      ],
     );
-    ref.invalidate(currentTenantProvider);
   }
 }
 
