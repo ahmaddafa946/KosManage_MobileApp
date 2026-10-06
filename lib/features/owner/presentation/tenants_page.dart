@@ -547,7 +547,7 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
                           child: Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),
                         ..._rooms.map(
-                          (room) => DropdownMenuItem<String>(
+                          (room) => DropdownMenuItem<String?>(
                             value: room.id,
                             child: Text(
                               '${room.roomNumber} · ${formatRupiah(room.price)} / bulan',
