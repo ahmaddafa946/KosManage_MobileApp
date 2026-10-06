@@ -517,154 +517,154 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
                 child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _name,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Nama lengkap'),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _roomId,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Kamar'),
-                selectedItemBuilder: (context) => [
-                  const Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ..._rooms.map(
-                    (room) => Text(
-                      '${room.roomNumber} · ${formatRupiah(room.price)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _name,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(labelText: 'Nama lengkap'),
                     ),
-                  ),
-                ],
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                  ..._rooms.map(
-                    (room) => DropdownMenuItem<String?>(
-                      value: room.id,
-                      child: Text(
-                        '${room.roomNumber} · ${formatRupiah(room.price)} / bulan',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _roomId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Kamar'),
+                      selectedItemBuilder: (context) => [
+                        const Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ..._rooms.map(
+                          (room) => Text(
+                            '${room.roomNumber} · ${formatRupiah(room.price)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                      items: [
+                        const DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                        ..._rooms.map(
+                          (room) => DropdownMenuItem<String>(
+                            value: room.id,
+                            child: Text(
+                              '${room.roomNumber} · ${formatRupiah(room.price)} / bulan',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: _loading
+                          ? null
+                          : (value) => setState(() => _roomId = value),
                     ),
-                  ),
-                ],
-                onChanged: _loading
-                    ? null
-                    : (value) => setState(() => _roomId = value),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'No. HP'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _identity,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'NIK'),
-              ),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final narrow = constraints.maxWidth < 340;
-                  if (narrow) {
-                    return Column(
-                      children: [
-                        _DateField(label: 'Mulai sewa', controller: _start, onTap: () => _pick(_start)),
-                        const SizedBox(height: 12),
-                        _DateField(label: 'Berakhir (opsional)', controller: _end, onTap: () => _pick(_end)),
-                      ],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _DateField(
-                          label: 'Mulai sewa',
-                          controller: _start,
-                          onTap: () => _pick(_start),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _DateField(
-                          label: 'Berakhir',
-                          controller: _end,
-                          onTap: () => _pick(_end),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 340) {
-                    return Column(
-                      children: [
-                        TextField(controller: _rent, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Harga sewa / bulan')),
-                        const SizedBox(height: 12),
-                        TextField(controller: _deposit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit')),
-                      ],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _rent,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Harga sewa / bulan',
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _phone,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(labelText: 'No. HP'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _identity,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'NIK'),
+                    ),
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final narrow = constraints.maxWidth < 340;
+                        if (narrow) {
+                          return Column(
+                            children: [
+                              _DateField(label: 'Mulai sewa', controller: _start, onTap: () => _pick(_start)),
+                              const SizedBox(height: 12),
+                              _DateField(label: 'Berakhir (opsional)', controller: _end, onTap: () => _pick(_end)),
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _DateField(
+                                label: 'Mulai sewa',
+                                controller: _start,
+                                onTap: () => _pick(_start),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _DateField(
+                                label: 'Berakhir',
+                                controller: _end,
+                                onTap: () => _pick(_end),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 340) {
+                          return Column(
+                            children: [
+                              TextField(controller: _rent, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Harga sewa / bulan')),
+                              const SizedBox(height: 12),
+                              TextField(controller: _deposit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit')),
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _rent,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Harga sewa / bulan',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _deposit,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(labelText: 'Deposit'),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _notes,
+                      maxLines: 2,
+                      decoration: const InputDecoration(labelText: 'Catatan'),
+                    ),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _deposit,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Deposit'),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _notes,
-                maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Catatan'),
-              ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  ],
                 ),
-            ],
-          ),
               ),
             ),
             Padding(
@@ -672,15 +672,184 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-        TextButton(
-          onPressed: _loading ? null : () => Navigator.pop(context, false),
-          child: const Text('Batal'),
-        ),
-        FilledButton(
-          onPressed: _loading ? null : _submit,
-          child: Text(_loading ? 'Menyimpan...' : 'Simpan'),
-        ),
-      ],
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(widget.tenant == null ? 'Tambah Penghuni' : 'Ubah Penghuni'),
+                        ),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                          child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: _name,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(labelText: 'Nama lengkap'),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: _roomId,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'Kamar'),
+                          selectedItemBuilder: (context) => [
+                            const Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ..._rooms.map(
+                              (room) => Text(
+                                '${room.roomNumber} · ${formatRupiah(room.price)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Tanpa kamar', maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ),
+                            ..._rooms.map(
+                              (room) => DropdownMenuItem<String>(
+                                value: room.id,
+                                child: Text(
+                                  '${room.roomNumber} · ${formatRupiah(room.price)} / bulan',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                          onChanged: _loading
+                              ? null
+                              : (value) => setState(() => _roomId = value),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _phone,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(labelText: 'No. HP'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(labelText: 'Email'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _identity,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'NIK'),
+                        ),
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final narrow = constraints.maxWidth < 340;
+                            if (narrow) {
+                              return Column(
+                                children: [
+                                  _DateField(label: 'Mulai sewa', controller: _start, onTap: () => _pick(_start)),
+                                  const SizedBox(height: 12),
+                                  _DateField(label: 'Berakhir (opsional)', controller: _end, onTap: () => _pick(_end)),
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: _DateField(
+                                    label: 'Mulai sewa',
+                                    controller: _start,
+                                    onTap: () => _pick(_start),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _DateField(
+                                    label: 'Berakhir',
+                                    controller: _end,
+                                    onTap: () => _pick(_end),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            if (constraints.maxWidth < 340) {
+                              return Column(
+                                children: [
+                                  TextField(controller: _rent, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Harga sewa / bulan')),
+                                  const SizedBox(height: 12),
+                                  TextField(controller: _deposit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit')),
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _rent,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Harga sewa / bulan',
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _deposit,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(labelText: 'Deposit'),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _notes,
+                          maxLines: 2,
+                          decoration: const InputDecoration(labelText: 'Catatan'),
+                        ),
+                        if (_error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Text(
+                              _error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                  TextButton(
+                    onPressed: _loading ? null : () => Navigator.pop(context, false),
+                    child: const Text('Batal'),
+                  ),
+                  FilledButton(
+                    onPressed: _loading ? null : _submit,
+                    child: Text(_loading ? 'Menyimpan...' : 'Simpan'),
+                  ),
+                ],
+                        ),
+                      ),
+                    ],
               ),
             ),
           ],
