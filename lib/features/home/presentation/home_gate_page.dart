@@ -11,16 +11,43 @@ import '../../auth/application/auth_controller.dart';
 import '../../owner/presentation/owner_shell_page.dart';
 import '../../tenant/presentation/tenant_shell_page.dart';
 
+/// Session lifecycle provider: emits new session object on sign-in/out
+/// so [currentProfileProvider] refetches instead of pinning old profile.
+final authSessionProvider = StreamProvider.autoDispose<Session?>((ref) {
+  final auth = Supabase.instance.client.auth;
+  return auth.onAuthStateChange.map((event) => event.session).distinct();
+});
+
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return SupabaseProfileRepository(Supabase.instance.client);
 });
 
-final currentProfileProvider = FutureProvider<UserProfile>((ref) async {
-  final session = ref.read(authRepositoryProvider).currentSession;
-  if (session == null) {
+final currentProfileProvider = FutureProvider.autoDispose<UserProfile>((
+  ref,
+) async {
+  // Watch session lifecycle: new sign-in creates new session object,
+  // forcing profile refetch instead of reusing previous user's profile.
+  final sessionAsync = ref.watch(authSessionProvider);
+  final streamed = sessionAsync.when(
+    data: (session) => session,
+    loading: () => null,
+    error: (_, _) => null,
+  );
+  // While auth stream boots, fall back to synchronous current session.
+  final effective = streamed ?? Supabase.instance.client.auth.currentSession;
+  if (effective == null) {
+    if (sessionAsync.isLoading) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final retry = Supabase.instance.client.auth.currentSession;
+      if (retry == null) throw const SessionException();
+      return ref
+          .read(profileRepositoryProvider)
+          .getCurrentProfile(retry.user.id);
+    }
     throw const SessionException();
   }
-  return ref.read(profileRepositoryProvider).getCurrentProfile(session.user.id);
+  final userId = effective.user.id;
+  return ref.read(profileRepositoryProvider).getCurrentProfile(userId);
 });
 
 String profileErrorMessage(Object error) {

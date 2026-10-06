@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../home/presentation/home_gate_page.dart';
 import '../application/auth_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -35,6 +36,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             email: _emailController.text,
             password: _passwordController.text,
           );
+      // Root fix for account switch: drop cached profile, wait for fresh
+      // profile tied to the new session before entering /home.
+      ref.invalidate(currentProfileProvider);
+      final freshProfile = await ref.read(currentProfileProvider.future);
+      debugPrint(
+        'Login success role=${freshProfile.role.name} user=${freshProfile.id}',
+      );
       if (!mounted) return;
       context.go('/home');
     } catch (error) {
