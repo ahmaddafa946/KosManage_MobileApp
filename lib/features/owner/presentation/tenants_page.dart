@@ -496,8 +496,10 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final viewInsets = MediaQuery.viewInsetsOf(context);
     final dialogWidth = (size.width - 32).clamp(280.0, 500.0).toDouble();
-    final dialogHeight = (size.height - 48).clamp(360.0, 620.0).toDouble();
+    final dialogHeight =
+        (size.height - viewInsets.bottom - 48).clamp(280.0, 620.0).toDouble();
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
