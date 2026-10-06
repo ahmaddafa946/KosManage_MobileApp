@@ -495,18 +495,28 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    final size = MediaQuery.sizeOf(context);
+    final dialogWidth = (size.width - 32).clamp(280.0, 500.0).toDouble();
+    final dialogHeight = (size.height - 48).clamp(360.0, 620.0).toDouble();
+
+    return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      title: Text(widget.tenant == null ? 'Tambah Penghuni' : 'Ubah Penghuni'),
-      content: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 500,
-          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
+      child: SizedBox(
+        width: dialogWidth,
+        height: dialogHeight,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(widget.tenant == null ? 'Tambah Penghuni' : 'Ubah Penghuni'),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
@@ -515,7 +525,7 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
                 decoration: const InputDecoration(labelText: 'Nama lengkap'),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String?>(
+              DropdownButtonFormField<String>(
                 initialValue: _roomId,
                 isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Kamar'),
@@ -655,9 +665,13 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
                 ),
             ],
           ),
-        ),
-      ),
-      actions: [
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
         TextButton(
           onPressed: _loading ? null : () => Navigator.pop(context, false),
           child: const Text('Batal'),
@@ -667,6 +681,11 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
           child: Text(_loading ? 'Menyimpan...' : 'Simpan'),
         ),
       ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
