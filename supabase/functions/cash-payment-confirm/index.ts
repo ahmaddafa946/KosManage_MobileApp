@@ -19,7 +19,8 @@ Deno.serve(async (req: Request) => {
     if (txError || !tx) return errorResponse("Transaction not found.", 404, "NOT_FOUND");
     if (tx.payment_method !== "cash") return errorResponse("Transaction is not a cash payment.", 400, "INVALID_METHOD");
 
-    const invoice = tx.payments as { property_id: string; billing_period: string; status: string } | null;
+    const invoiceData = Array.isArray(tx.payments) ? tx.payments[0] : tx.payments;
+    const invoice = invoiceData as { property_id: string; billing_period: string; status: string } | null;
     if (!invoice) return errorResponse("Invoice not found.", 404, "INVOICE_NOT_FOUND");
     const { data: prop } = await admin.from("properties").select("owner_id").eq("id", invoice.property_id).single();
     if (!prop || prop.owner_id !== user.id) return errorResponse("Forbidden", 403, "FORBIDDEN");
