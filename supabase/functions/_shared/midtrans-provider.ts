@@ -11,6 +11,173 @@ import type {
   PaymentGatewayProvider,
 } from "./payment-provider.ts";
 
+export interface MidtransAction {
+  name?: string;
+  method?: string;
+  url?: string;
+  [key: string]: unknown;
+}
+
+export interface MidtransVaNumber {
+  bank?: string;
+  va_number?: string;
+  [key: string]: unknown;
+}
+
+export interface MidtransChargeResponse extends Record<string, unknown> {
+  status_code?: string;
+  status_message?: string | string[];
+  transaction_id?: string;
+  transaction_status?: string;
+  fraud_status?: string;
+  order_id?: string;
+  gross_amount?: string;
+  currency?: string;
+  payment_type?: string;
+  transaction_time?: string;
+  settlement_time?: string;
+  expiry_time?: string;
+  qr_string?: string;
+  actions?: MidtransAction[];
+  va_numbers?: MidtransVaNumber[];
+  permata_va_number?: string;
+  biller_code?: string;
+  bill_key?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readOptionalString(
+  value: Record<string, unknown>,
+  fieldName: string,
+): string | undefined {
+  const field = value[fieldName];
+
+  if (field === undefined || field === null) {
+    return undefined;
+  }
+
+  if (typeof field !== "string") {
+    throw new Error("Invalid Midtrans charge response");
+  }
+
+  return field;
+}
+
+function readOptionalStringArray(
+  value: Record<string, unknown>,
+  fieldName: string,
+): string[] | undefined {
+  const field = value[fieldName];
+
+  if (field === undefined || field === null) {
+    return undefined;
+  }
+
+  if (
+    !Array.isArray(field) ||
+    field.some((item) => typeof item !== "string")
+  ) {
+    throw new Error("Invalid Midtrans charge response");
+  }
+
+  return field;
+}
+
+function readOptionalActions(
+  value: Record<string, unknown>,
+): MidtransAction[] | undefined {
+  const field = value.actions;
+
+  if (field === undefined || field === null) {
+    return undefined;
+  }
+
+  if (!Array.isArray(field)) {
+    throw new Error("Invalid Midtrans charge response");
+  }
+
+  return field.map((item) => {
+    if (!isRecord(item)) {
+      throw new Error("Invalid Midtrans charge response");
+    }
+
+    return {
+      ...item,
+      name: readOptionalString(item, "name"),
+      method: readOptionalString(item, "method"),
+      url: readOptionalString(item, "url"),
+    };
+  });
+}
+
+function readOptionalVaNumbers(
+  value: Record<string, unknown>,
+): MidtransVaNumber[] | undefined {
+  const field = value.va_numbers;
+
+  if (field === undefined || field === null) {
+    return undefined;
+  }
+
+  if (!Array.isArray(field)) {
+    throw new Error("Invalid Midtrans charge response");
+  }
+
+  return field.map((item) => {
+    if (!isRecord(item)) {
+      throw new Error("Invalid Midtrans charge response");
+    }
+
+    return {
+      ...item,
+      bank: readOptionalString(item, "bank"),
+      va_number: readOptionalString(item, "va_number"),
+    };
+  });
+}
+
+/**
+ * Validates and narrows the untrusted JSON returned by the Midtrans charge API.
+ * This keeps downstream payment mapping strongly typed without using explicit-any casts.
+ */
+export function parseMidtransChargeResponse(
+  payload: unknown,
+): MidtransChargeResponse {
+  if (!isRecord(payload)) {
+    throw new Error("Invalid Midtrans charge response");
+  }
+
+  const parsed: MidtransChargeResponse = {
+    ...payload,
+    status_code: readOptionalString(payload, "status_code"),
+    status_message:
+      typeof payload.status_message === "string"
+        ? payload.status_message
+        : readOptionalStringArray(payload, "status_message"),
+    transaction_id: readOptionalString(payload, "transaction_id"),
+    transaction_status: readOptionalString(payload, "transaction_status"),
+    fraud_status: readOptionalString(payload, "fraud_status"),
+    order_id: readOptionalString(payload, "order_id"),
+    gross_amount: readOptionalString(payload, "gross_amount"),
+    currency: readOptionalString(payload, "currency"),
+    payment_type: readOptionalString(payload, "payment_type"),
+    transaction_time: readOptionalString(payload, "transaction_time"),
+    settlement_time: readOptionalString(payload, "settlement_time"),
+    expiry_time: readOptionalString(payload, "expiry_time"),
+    qr_string: readOptionalString(payload, "qr_string"),
+    actions: readOptionalActions(payload),
+    va_numbers: readOptionalVaNumbers(payload),
+    permata_va_number: readOptionalString(payload, "permata_va_number"),
+    biller_code: readOptionalString(payload, "biller_code"),
+    bill_key: readOptionalString(payload, "bill_key"),
+  };
+
+  return parsed;
+}
+
 export class MidtransPaymentProvider implements PaymentGatewayProvider {
   readonly name = "midtrans";
 
@@ -58,7 +225,7 @@ export class MidtransPaymentProvider implements PaymentGatewayProvider {
 
     // Extract QR URL from actions array if available
     const qrAction = res.actions?.find(
-      (a: { name: string }) => a.name === "generate-qr-code",
+      (a) => a.name === "generate-qr-code",
     );
 
     return {
@@ -212,7 +379,9 @@ export class MidtransPaymentProvider implements PaymentGatewayProvider {
     }
   }
 
-  private async charge(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  private async charge(
+    payload: Record<string, unknown>,
+  ): Promise<MidtransChargeResponse> {
     const res = await fetch(`${this.baseUrl}/charge`, {
       method: "POST",
       headers: {
@@ -222,13 +391,18 @@ export class MidtransPaymentProvider implements PaymentGatewayProvider {
       },
       body: JSON.stringify(payload),
     });
-    // deno-lint-ignore no-explicit-any
-    const data: any = await res.json();
+
+    const data = parseMidtransChargeResponse(await res.json());
+
     if (!res.ok && res.status !== 201) {
+      const statusMessage = Array.isArray(data.status_message)
+        ? data.status_message.join(", ")
+        : data.status_message;
       throw new Error(
-        `Midtrans charge failed: ${data.status_message ?? res.statusText}`,
+        `Midtrans charge failed: ${statusMessage ?? res.statusText}`,
       );
     }
+
     return data;
   }
 }
