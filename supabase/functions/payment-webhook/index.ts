@@ -1,15 +1,29 @@
-/**
- * Edge Function: /payment-webhook
- * Receives and processes Midtrans webhook notifications.
- * 
- * This is a PUBLIC endpoint (no auth required) but validates SHA-512 signature.
- * Handles: settlement, deny, cancel, expire, failure, pending
- */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient } from "../_shared/supabase-admin.ts";
 import { getPaymentGateway } from "../_shared/midtrans-provider.ts";
 import { jsonResponse, errorResponse, corsPreflightResponse } from "../_shared/response-helper.ts";
 import { processPaymentSettlement } from "../_shared/payment-settlement.ts";
+
+type SettlementStatus = "created" | "pending" | "success" | "failed" | "expired" | "cancelled";
+
+function mapGatewayStatus(s: string): SettlementStatus {
+  switch (s) {
+    case "settlement":
+    case "capture":
+      return "success";
+    case "pending":
+      return "pending";
+    case "deny":
+    case "failure":
+      return "failed";
+    case "expire":
+      return "expired";
+    case "cancel":
+      return "cancelled";
+    default:
+      return "created";
+  }
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return corsPreflightResponse();
@@ -17,31 +31,25 @@ Deno.serve(async (req: Request) => {
   try {
     const rawBody = await req.json();
     const gateway = getPaymentGateway();
-
-    // 1. Verify webhook signature (SHA-512)
     const verification = await gateway.verifyWebhook(rawBody);
+
     if (!verification.isValid) {
       console.error("Webhook signature verification FAILED for order:", verification.orderId);
       return errorResponse("Invalid signature", 401, "INVALID_SIGNATURE");
     }
 
     const admin = createAdminClient();
-    const { orderId, transactionId, transactionStatus, grossAmount } = verification;
+    const { orderId, transactionId, transactionStatus } = verification;
+    const newStatus = mapGatewayStatus(transactionStatus);
 
-    // 2. Idempotency check: has this exact event been processed?
-    const { data: existingEvent } = await admin
-      .from("payment_webhook_events")
-      .select("id")
-      .eq("order_id", orderId)
-      .eq("transaction_status", transactionStatus)
-      .maybeSingle();
+    // Reconcile first. We intentionally record the webhook event only after
+    // settlement succeeds. Otherwise a transient DB error could mark an event
+    // as processed and prevent Midtrans from retrying it.
+    await processPaymentSettlement(admin, orderId, transactionId || orderId, newStatus);
 
-    if (existingEvent) {
-      // Already processed, return 200 to stop Midtrans retries
-      return jsonResponse({ status: "ok", message: "Event already processed" });
-    }
-
-    // 3. Record webhook event (idempotency guard via UNIQUE constraint)
+    // Idempotency audit record. Concurrent duplicate webhooks are safe because
+    // the unique constraint accepts only one event; settlement itself is
+    // idempotent and can safely run before this insert.
     const { error: eventInsertError } = await admin
       .from("payment_webhook_events")
       .insert({
@@ -52,47 +60,17 @@ Deno.serve(async (req: Request) => {
         raw_payload: rawBody,
       });
 
-    if (eventInsertError) {
-      // Constraint violation = duplicate, which is fine
-      if (eventInsertError.code === "23505") {
-        return jsonResponse({ status: "ok", message: "Event already processed" });
-      }
-      console.error("Failed to insert webhook event:", eventInsertError);
+    if (eventInsertError && eventInsertError.code !== "23505") {
+      throw eventInsertError;
     }
-
-    // 4. Map status and execute shared settlement logic
-    const mapGatewayStatus = (s: string): "success" | "pending" | "failed" | "expired" | "cancelled" | "created" => {
-      switch (s) {
-        case "settlement":
-        case "capture":
-          return "success";
-        case "pending":
-          return "pending";
-        case "deny":
-        case "failure":
-          return "failed";
-        case "expire":
-          return "expired";
-        case "cancel":
-          return "cancelled";
-        default:
-          return "created";
-      }
-    };
-
-    const newStatus = mapGatewayStatus(transactionStatus);
-    
-    // Process settlement, this handles all db updates, priorities, idempotency, etc.
-    await processPaymentSettlement(admin, orderId, transactionId || orderId, newStatus as any);
 
     return jsonResponse({ status: "ok" });
   } catch (err) {
     console.error("payment-webhook error:", err);
-    // MUST return 500 for internal errors so Midtrans can retry.
     return errorResponse(
       err instanceof Error ? err.message : "Internal Server Error",
       500,
-      "INTERNAL_ERROR"
+      "INTERNAL_ERROR",
     );
   }
 });
