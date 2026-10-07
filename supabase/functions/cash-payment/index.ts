@@ -5,11 +5,11 @@
  * Request: POST { invoice_id: string }
  * Security: Requires authenticated tenant JWT.
  */
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient, getAuthenticatedUser } from "../_shared/supabase-admin.ts";
 import { jsonResponse, errorResponse, corsPreflightResponse } from "../_shared/response-helper.ts";
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return corsPreflightResponse();
 
   try {
@@ -66,12 +66,11 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (existingTx) {
-      await admin
-        .from("payment_transactions")
-        .update({ status: "cancelled", updated_at: new Date().toISOString() })
-        .eq("id", existingTx.id);
-      
-      // Best-effort gateway cancel ignored for cash
+      return errorResponse(
+        "Masih ada transaksi aktif untuk tagihan ini. Silakan selesaikan atau batalkan transaksi sebelumnya.",
+        409,
+        "ACTIVE_TRANSACTION_EXISTS"
+      );
     }
 
     // 4. Create manual transaction record

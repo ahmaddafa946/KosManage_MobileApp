@@ -5,11 +5,12 @@
  * Request: POST { transaction_id: string }
  * Security: Requires authenticated owner JWT.
  */
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient, getAuthenticatedUser } from "../_shared/supabase-admin.ts";
 import { jsonResponse, errorResponse, corsPreflightResponse } from "../_shared/response-helper.ts";
+import { processPaymentSettlement } from "../_shared/payment-settlement.ts";
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return corsPreflightResponse();
 
   try {
@@ -28,7 +29,7 @@ serve(async (req: Request) => {
     // 1. Fetch transaction and invoice
     const { data: tx, error: txError } = await admin
       .from("payment_transactions")
-      .select("id, payment_id, tenant_id, status, gross_amount, payments(property_id, billing_period, amount_due, is_renewal, status)")
+      .select("id, order_id, payment_method, payment_id, tenant_id, status, gross_amount, payments(property_id, billing_period, amount_due, is_renewal, status)")
       .eq("id", transaction_id)
       .single();
 
@@ -50,58 +51,21 @@ serve(async (req: Request) => {
       return errorResponse("Forbidden", 403, "FORBIDDEN");
     }
 
+    if (tx.payment_method !== "cash") {
+       return errorResponse("Transaction is not a cash payment.", 400, "INVALID_METHOD");
+    }
+
     if (tx.status === "success" || invoice.status === "paid") {
        return errorResponse("Already confirmed/paid.", 409, "ALREADY_PAID");
     }
 
-    // 3. Mark transaction as success
-    await admin
-      .from("payment_transactions")
-      .update({
-        status: "success",
-        paid_at: new Date().toISOString(),
-        gateway_reference: "MANUAL-CASH",
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", tx.id);
-
-    // 4. Update invoice to paid
-    await admin
-      .from("payments")
-      .update({
-        status: "paid",
-        amount_paid: invoice.amount_due,
-        paid_at: new Date().toISOString(),
-        payment_date: new Date().toISOString().split("T")[0],
-        payment_reference: tx.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", tx.payment_id);
-
-    // 5. Apply rental renewal
-    if (invoice.is_renewal) {
-      await admin.rpc("apply_rental_renewal", { p_payment_id: tx.payment_id });
+    // Use shared settlement logic
+    const { status } = body;
+    if (status !== "success" && status !== "failed") {
+        return errorResponse("Invalid status update.", 400, "INVALID_STATUS");
     }
 
-    // 6. Notify Tenant
-    const { data: tenantData } = await admin
-      .from("tenants")
-      .select("profile_id")
-      .eq("id", tx.tenant_id)
-      .single();
-
-    if (tenantData?.profile_id) {
-      await admin.from("notifications").insert({
-        profile_id: tenantData.profile_id,
-        title: "Pembayaran Dikonfirmasi",
-        message: `Pemilik kos telah mengonfirmasi pembayaran tunai Anda untuk periode ${invoice.billing_period}.`,
-        type: "payment_success",
-        data: {
-          payment_id: tx.payment_id,
-          billing_period: invoice.billing_period,
-        },
-      });
-    }
+    await processPaymentSettlement(admin, tx.order_id, "MANUAL-CASH", status);
 
     return jsonResponse({ status: "success" });
 

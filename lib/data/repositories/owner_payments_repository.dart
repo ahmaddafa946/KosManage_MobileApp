@@ -178,7 +178,7 @@ class SupabaseOwnerPaymentsRepository implements OwnerPaymentsRepository {
 
   @override
   Future<void> confirmCashPayment(String transactionId, String status) async {
-    final response = await _client.functions.invoke(
+    await _client.functions.invoke(
       'cash-payment-confirm',
       body: {
         'transaction_id': transactionId,

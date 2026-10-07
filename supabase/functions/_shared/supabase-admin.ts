@@ -1,4 +1,5 @@
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 /**
  * Creates a Supabase admin client using the service role key.

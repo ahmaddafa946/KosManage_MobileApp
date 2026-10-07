@@ -5,12 +5,13 @@
  * Request: POST { order_id: string }
  * Security: Requires authenticated user (tenant or owner).
  */
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient, getAuthenticatedUser } from "../_shared/supabase-admin.ts";
 import { getPaymentGateway } from "../_shared/midtrans-provider.ts";
 import { jsonResponse, errorResponse, corsPreflightResponse } from "../_shared/response-helper.ts";
+import { processPaymentSettlement } from "../_shared/payment-settlement.ts";
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return corsPreflightResponse();
 
   try {
@@ -80,7 +81,7 @@ serve(async (req: Request) => {
     }
 
     // 3. Map status and trigger update if changed (similar to webhook logic)
-    const mapGatewayStatus = (s: string): string => {
+    const mapGatewayStatus = (s: string): "success" | "pending" | "failed" | "expired" | "cancelled" | "created" => {
       switch (s) {
         case "settlement":
         case "capture":
@@ -95,35 +96,14 @@ serve(async (req: Request) => {
         case "cancel":
           return "cancelled";
         default:
-          return s; // Keep original if unknown
+          return "created"; // Keep original if unknown
       }
     };
 
     const newStatus = mapGatewayStatus(statusResult.transactionStatus);
 
     if (newStatus !== tx.status && tx.status !== "success") {
-       // Only update if changed and current is not success.
-       // Ideally we'd just dispatch this to the same logic as webhook, but since 
-       // webhook is asynchronous and we might need an immediate update for the UI:
-       
-       const txUpdate: Record<string, unknown> = {
-         status: newStatus,
-         updated_at: new Date().toISOString(),
-       };
-       if (newStatus === "success") {
-         txUpdate.paid_at = new Date().toISOString();
-         txUpdate.gateway_reference = statusResult.transactionId;
-       }
-
-       await admin
-         .from("payment_transactions")
-         .update(txUpdate)
-         .eq("id", tx.id);
-       
-       // Note: We don't do the full invoice settlement here to avoid race conditions with webhook.
-       // The webhook is the source of truth for settlement. We just update the tx status.
-       // However, if we absolutely must, we could duplicate the webhook settlement logic here.
-       // Let's rely on webhook for actual settlement.
+       await processPaymentSettlement(admin, order_id, statusResult.transactionId || order_id, newStatus);
     }
 
     return jsonResponse({
