@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/models/owner_management.dart';
+import '../../domain/models/payment_transaction.dart';
 
 abstract interface class OwnerPaymentsRepository {
   Future<List<OwnerPayment>> getPayments(
@@ -36,6 +37,9 @@ abstract interface class OwnerPaymentsRepository {
   });
 
   Future<void> deletePayment(String paymentId);
+
+  Future<List<PaymentTransaction>> getPendingCashTransactions(String propertyId);
+  Future<void> confirmCashPayment(String transactionId, String status);
 }
 
 class SupabaseOwnerPaymentsRepository implements OwnerPaymentsRepository {
@@ -154,5 +158,32 @@ class SupabaseOwnerPaymentsRepository implements OwnerPaymentsRepository {
   @override
   Future<void> deletePayment(String paymentId) async {
     await _client.from('payments').delete().eq('id', paymentId);
+  }
+
+  @override
+  Future<List<PaymentTransaction>> getPendingCashTransactions(String propertyId) async {
+    final rows = await _client
+        .from('payment_transactions')
+        .select('*, tenant:tenants!payment_transactions_tenant_id_fkey(property_id)')
+        .eq('payment_method', 'cash')
+        .eq('status', 'pending')
+        .eq('tenant.property_id', propertyId)
+        .order('created_at', ascending: false);
+
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .map(PaymentTransaction.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> confirmCashPayment(String transactionId, String status) async {
+    final response = await _client.functions.invoke(
+      'cash-payment-confirm',
+      body: {
+        'transaction_id': transactionId,
+        'status': status,
+      },
+    );
   }
 }

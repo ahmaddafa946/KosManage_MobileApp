@@ -27,6 +27,14 @@ abstract interface class TenantRepository {
     required String priority,
     File? photo,
   });
+  Future<Map<String, dynamic>> createPaymentIntent({
+    required String invoiceId,
+    required String paymentMethod,
+    String? bank,
+  });
+  Future<Map<String, dynamic>> createCashPayment({
+    required String invoiceId,
+  });
 }
 
 class SupabaseTenantRepository implements TenantRepository {
@@ -177,5 +185,35 @@ class SupabaseTenantRepository implements TenantRepository {
           .update({'image_url': path})
           .eq('id', reportId);
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>> createPaymentIntent({
+    required String invoiceId,
+    required String paymentMethod,
+    String? bank,
+  }) async {
+    final response = await _client.functions.invoke(
+      'create-payment',
+      body: {
+        'invoice_id': invoiceId,
+        'payment_method': paymentMethod,
+        'bank': bank,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  @override
+  Future<Map<String, dynamic>> createCashPayment({
+    required String invoiceId,
+  }) async {
+    final response = await _client.functions.invoke(
+      'cash-payment',
+      body: {
+        'invoice_id': invoiceId,
+      },
+    );
+    return response.data as Map<String, dynamic>;
   }
 }

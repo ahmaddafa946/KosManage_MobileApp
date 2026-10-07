@@ -139,6 +139,11 @@ class OwnerPayment {
     required this.amountDue,
     required this.amountPaid,
     required this.status,
+    this.invoiceNumber,
+    this.periodStart,
+    this.periodEnd,
+    this.isRenewal,
+    this.renewalAppliedAt,
     this.tenantId,
     this.tenantName,
     this.roomNumber,
@@ -156,6 +161,11 @@ class OwnerPayment {
   final num amountDue;
   final num amountPaid;
   final String status;
+  final String? invoiceNumber;
+  final String? periodStart;
+  final String? periodEnd;
+  final bool? isRenewal;
+  final String? renewalAppliedAt;
   final String? tenantId;
   final String? tenantName;
   final String? roomNumber;
@@ -185,6 +195,11 @@ class OwnerPayment {
       amountDue: json['amount_due'] as num? ?? 0,
       amountPaid: json['amount_paid'] as num? ?? 0,
       status: json['status'] as String? ?? 'unpaid',
+      invoiceNumber: json['invoice_number'] as String?,
+      periodStart: json['period_start'] as String?,
+      periodEnd: json['period_end'] as String?,
+      isRenewal: json['is_renewal'] as bool?,
+      renewalAppliedAt: json['renewal_applied_at'] as String?,
       tenantId: json['tenant_id'] as String? ?? tenant?['id'] as String?,
       tenantName: tenant?['name'] as String?,
       roomNumber: room?['room_number'] as String?,

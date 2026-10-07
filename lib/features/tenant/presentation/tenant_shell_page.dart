@@ -9,6 +9,8 @@ import '../../../domain/models/user_profile.dart';
 import '../../../domain/services/owner_display.dart';
 import '../../settings/presentation/settings_page.dart';
 import '../../shared/presentation/app_ui.dart';
+import '../application/tenant_payment_providers.dart';
+import 'payment_flow.dart';
 
 final tenantRepositoryProvider = Provider<TenantRepository>((ref) {
   return SupabaseTenantRepository(Supabase.instance.client);
@@ -685,6 +687,12 @@ class _TenantPaymentsTab extends ConsumerWidget {
             ),
           );
         }
+        
+        // Watch recent transactions
+        final txAsync = ref.watch(tenantRecentTransactionsProvider);
+        final txList = txAsync.value ?? [];
+        final pendingTx = txList.where((tx) => tx.status == 'created' || tx.status == 'pending').firstOrNull;
+
         final billsAsync = ref.watch(
           _tenantRecentPaymentsProvider(myTenant),
         );
@@ -707,14 +715,33 @@ class _TenantPaymentsTab extends ConsumerWidget {
             final open = list.where((p) => p.status != 'paid').length;
             return Column(
               children: [
+                if (pendingTx != null)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Colors.orange),
+                        const SizedBox(width: 12),
+                        const Expanded(child: Text('Anda memiliki transaksi yang sedang berjalan.')),
+                        TextButton(
+                          onPressed: () => context.push('/payment/${pendingTx.id}'),
+                          child: const Text('Lanjutkan'),
+                        )
+                      ],
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: AppSectionCard(
                     title: 'Tagihan Anda',
                     icon: Icons.lock_outline,
-                    // ponytail: read-only tenant bills; payment writes stay owner-only.
                     child: Text(
-                      '$open tagihan terbuka · ${list.length} total · pembayaran resmi dicatat pemilik kos.',
+                      '$open tagihan terbuka · ${list.length} total.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -728,6 +755,7 @@ class _TenantPaymentsTab extends ConsumerWidget {
                     itemCount: list.length,
                     itemBuilder: (context, index) {
                       final p = list[index];
+                      final isUnpaid = p.status == 'unpaid' || p.status == 'partial' || p.status == 'overdue';
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: Card(
@@ -781,6 +809,30 @@ class _TenantPaymentsTab extends ConsumerWidget {
                                     ),
                                   ),
                                 ],
+                                if (isUnpaid && pendingTx == null) ...[
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton(
+                                      onPressed: () async {
+                                        // Show payment selection
+                                        final res = await showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          builder: (_) => PaymentSelectionSheet(invoice: p),
+                                        );
+                                        if (res != null && res is Map<String, dynamic>) {
+                                          final txId = res['transaction_id'] as String;
+                                          if (context.mounted) {
+                                            ref.invalidate(tenantRecentTransactionsProvider);
+                                            context.push('/payment/$txId');
+                                          }
+                                        }
+                                      },
+                                      child: const Text('Bayar Sekarang'),
+                                    ),
+                                  ),
+                                ]
                               ],
                             ),
                           ),

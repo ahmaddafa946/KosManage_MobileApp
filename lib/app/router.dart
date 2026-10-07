@@ -9,6 +9,7 @@ import '../core/auth/role_guard.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/home/presentation/home_gate_page.dart';
 import '../features/settings/presentation/settings_page.dart';
+import '../features/tenant/presentation/payment_flow.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
@@ -58,6 +59,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
         builder: (context, state) => const HomeGatePage(),
+      ),
+      GoRoute(
+        path: '/payment/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return ActiveTransactionScreen(transactionId: id);
+        },
       ),
     ],
     redirect: (context, state) {

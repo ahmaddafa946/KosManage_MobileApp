@@ -7,6 +7,7 @@ import '../../../data/repositories/owner_reports_repository.dart';
 import '../../../data/repositories/owner_rooms_repository.dart';
 import '../../../data/repositories/owner_tenants_repository.dart';
 import '../../../domain/models/owner_management.dart';
+import '../../../domain/models/payment_transaction.dart';
 
 final ownerPropertyRepositoryProvider = Provider<OwnerPropertyRepository>((
   ref,
@@ -40,4 +41,10 @@ final ownerPropertyProvider = FutureProvider<OwnerProperty>((ref) async {
   return ref
       .read(ownerPropertyRepositoryProvider)
       .getPrimaryProperty(session.user.id);
+});
+
+final ownerPendingCashTransactionsProvider = FutureProvider.autoDispose<List<PaymentTransaction>>((ref) async {
+  final propertyAsync = await ref.watch(ownerPropertyProvider.future);
+  final repo = ref.read(ownerPaymentsRepositoryProvider);
+  return repo.getPendingCashTransactions(propertyAsync.id);
 });

@@ -121,4 +121,14 @@ class _FakeTenantRepository implements TenantRepository {
     required String priority,
     File? photo,
   }) async {}
+
+  @override
+  Future<Map<String, dynamic>> createCashPayment({required String invoiceId}) async => {};
+
+  @override
+  Future<Map<String, dynamic>> createPaymentIntent({
+    required String invoiceId,
+    required String paymentMethod,
+    String? bank,
+  }) async => {};
 }
