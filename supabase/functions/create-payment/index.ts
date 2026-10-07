@@ -172,11 +172,14 @@ Deno.serve(async (req: Request) => {
       return errorResponse(`Failed to save transaction: ${insertError.message}`, 500, "DB_ERROR");
     }
 
-    // 11. Update invoice payment_method marker
-    await admin
+    // 11. Keep the legacy invoice payment_method enum compatible:
+    // QRIS is e-wallet, while VA/bank transfer is transfer.
+    const invoicePaymentMethod = payment_method === "qris" ? "ewallet" : "transfer";
+    const { error: invoiceMethodError } = await admin
       .from("payments")
-      .update({ payment_method, updated_at: new Date().toISOString() })
+      .update({ payment_method: invoicePaymentMethod, updated_at: new Date().toISOString() })
       .eq("id", invoice_id);
+    if (invoiceMethodError) throw invoiceMethodError;
 
     // 12. Return transaction details to client
     return jsonResponse({
