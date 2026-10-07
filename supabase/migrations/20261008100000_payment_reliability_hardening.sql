@@ -61,7 +61,7 @@ BEGIN
         VALUES (
             v_tenant.property_id, v_tenant.tenant_id, v_tenant.room_id,
             'INV/' || pg_catalog.to_char(v_start_date, 'YYYYMM') || '/' ||
-              pg_catalog.substring(v_tenant.tenant_id::text from 1 for 6),
+              pg_catalog.substr(v_tenant.tenant_id::text, 1, 6),
             v_period, v_start_date, v_end_date, v_due_date,
             COALESCE(v_tenant.rent_price, 0), 0, 'unpaid', true
         )
