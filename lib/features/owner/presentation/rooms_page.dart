@@ -17,23 +17,66 @@ class RoomsPage extends ConsumerStatefulWidget {
 class _RoomsPageState extends ConsumerState<RoomsPage> {
   String _query = '';
   String _status = 'all';
-  Future<List<OwnerRoom>>? _roomsFuture;
+  OwnerProperty? _property;
+  List<OwnerRoom> _rooms = const [];
+  bool _roomsLoading = true;
+  String? _roomsError;
+  int _loadRequestId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRooms();
+  }
+
+  Future<void> _loadRooms({bool showLoading = false}) async {
+    final requestId = ++_loadRequestId;
+    if (showLoading && mounted) {
+      setState(() {
+        _roomsLoading = true;
+        _roomsError = null;
+      });
+    } else if (mounted) {
+      setState(() => _roomsError = null);
+    }
+
+    try {
+      final property =
+          _property ?? await ref.read(ownerPropertyProvider.future);
+      final rooms = await ref.read(ownerRoomsRepositoryProvider).getRooms(
+            property.id,
+            query: _query,
+            status: _status,
+          );
+
+      if (!mounted || requestId != _loadRequestId) return;
+      setState(() {
+        _property = property;
+        _rooms = rooms;
+        _roomsLoading = false;
+        _roomsError = null;
+      });
+    } catch (error) {
+      if (!mounted || requestId != _loadRequestId) return;
+      setState(() {
+        _roomsLoading = false;
+        _roomsError = _friendlyError(error);
+      });
+    }
+  }
 
   Future<void> _openForm({OwnerRoom? room}) async {
-    final property = await ref.read(ownerPropertyProvider.future);
+    final property =
+        _property ?? await ref.read(ownerPropertyProvider.future);
     if (!mounted) return;
+
     final saved = await showDialog<bool>(
       context: context,
       builder: (_) => _RoomFormDialog(property: property, room: room),
     );
+
     if (saved == true && mounted) {
-      setState(() {
-        _roomsFuture = ref.read(ownerRoomsRepositoryProvider).getRooms(
-              property.id,
-              query: _query,
-              status: _status,
-            );
-      });
+      await _loadRooms();
     }
   }
 
@@ -41,10 +84,12 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Hapus kamar ${room.roomNumber}?'),
+        title: Text('Hapus kamar ' + room.roomNumber + '?'),
         content: Text(
           room.tenantName != null
-              ? 'Kamar ini masih memiliki penghuni aktif (${room.tenantName}). Kosongkan terlebih dahulu.'
+              ? 'Kamar ini masih memiliki penghuni aktif (' +
+                  room.tenantName! +
+                  '). Kosongkan terlebih dahulu.'
               : 'Data kamar akan dihapus permanen dari sistem.',
         ),
         actions: [
@@ -66,18 +111,20 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
       ),
     );
     if (confirmed != true || !mounted) return;
+
     try {
       await ref.read(ownerRoomsRepositoryProvider).deleteRoom(room.id);
-      if (mounted) setState(() {});
+      if (mounted) await _loadRooms();
     } catch (error) {
       _showError(error);
     }
   }
 
   void _showError(Object error) {
+    final message = _friendlyError(error);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_friendlyError(error)),
+        content: Text(message),
         backgroundColor: Theme.of(context).colorScheme.error,
       ),
     );
@@ -87,148 +134,116 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
   Widget build(BuildContext context) {
     final repo = ref.watch(ownerRoomsRepositoryProvider);
     final scheme = Theme.of(context).colorScheme;
+    final property = _property;
 
-    return FutureBuilder<OwnerProperty>(
-      future: ref.watch(ownerPropertyProvider.future),
-      builder: (context, propertySnapshot) {
-        if (propertySnapshot.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (propertySnapshot.hasError || propertySnapshot.data == null) {
-          return AppErrorState(
-            message: _friendlyError(propertySnapshot.error),
-            onRetry: () => setState(() {}),
-          );
-        }
-        final property = propertySnapshot.data!;
+    if (property == null && _roomsLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        return FutureBuilder<List<OwnerRoom>>(
-          future: _roomsFuture ??= repo.getRooms(
-            property.id,
-            query: _query,
-            status: _status,
-          ),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return AppErrorState(
-                message: _friendlyError(snapshot.error),
-                onRetry: () => setState(() {}),
-              );
-            }
-            final items = snapshot.data ?? const <OwnerRoom>[];
+    if (property == null && _roomsError != null) {
+      return AppErrorState(
+        message: _roomsError!,
+        onRetry: () => _loadRooms(showLoading: true),
+      );
+    }
 
-            return RefreshIndicator(
-              onRefresh: () async {
-                setState(() {
-                  _roomsFuture = repo.getRooms(
-                    property.id,
-                    query: _query,
-                    status: _status,
-                  );
-                });
-                await _roomsFuture;
-              },
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-                children: [
-                  // Top Title / Stats Header
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              property.name,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${items.length} kamar ditemukan',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: scheme.onSurfaceVariant,
+    if (property == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_roomsError != null) {
+      return AppErrorState(
+        message: _roomsError!,
+        onRetry: () => _loadRooms(showLoading: true),
+      );
+    }
+
+    final items = _rooms;
+
+    return RefreshIndicator(
+      onRefresh: _loadRooms,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      property.name,
+                      style:
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      FilledButton.icon(
-                        onPressed: () => _openForm(),
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Tambah'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Search Field
-                  AppSearchField(
-                    hint: 'Cari nomor kamar...',
-                    onChanged: (value) {
-                      setState(() {
-                        _query = value;
-                        _roomsFuture = repo.getRooms(
-                          property.id,
-                          query: value,
-                          status: _status,
-                        );
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Status Filter Chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _filterChip('Semua', 'all', property, repo),
-                        _filterChip('Kosong', 'available', property, repo),
-                        _filterChip('Terisi', 'occupied', property, repo),
-                        _filterChip('Maintenance', 'maintenance', property, repo),
-                      ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Items List or Empty State
-                  if (items.isEmpty)
-                    AppEmptyState(
-                      icon: Icons.meeting_room_outlined,
-                      title: 'Tidak ada kamar',
-                      message: _query.isNotEmpty || _status != 'all'
-                          ? 'Tidak ada kamar yang sesuai dengan kriteria filter.'
-                          : 'Tambahkan kamar pertama untuk memulai operasional kos.',
-                      action: FilledButton.icon(
-                        onPressed: () => _openForm(),
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Tambah Kamar'),
-                      ),
-                    )
-                  else
-                    ...items.map(
-                      (room) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _RoomCard(
-                          room: room,
-                          onTap: () => _showDetail(room),
-                          onEdit: () => _openForm(room: room),
-                          onDelete: () => _delete(room),
-                        ),
+                    const SizedBox(height: 2),
+                    Text(
+                      items.length.toString() + ' kamar ditemukan',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
-            );
-          },
-        );
-      },
+              FilledButton.icon(
+                onPressed: _roomsLoading ? null : () => _openForm(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Tambah'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          AppSearchField(
+            hint: 'Cari nomor kamar...',
+            onChanged: (value) {
+              setState(() => _query = value);
+              _loadRooms();
+            },
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _filterChip('Semua', 'all', property, repo),
+                _filterChip('Kosong', 'available', property, repo),
+                _filterChip('Terisi', 'occupied', property, repo),
+                _filterChip('Maintenance', 'maintenance', property, repo),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (items.isEmpty)
+            AppEmptyState(
+              icon: Icons.meeting_room_outlined,
+              title: 'Tidak ada kamar',
+              message: _query.isNotEmpty || _status != 'all'
+                  ? 'Tidak ada kamar yang sesuai dengan kriteria filter.'
+                  : 'Tambahkan kamar pertama untuk memulai operasional kos.',
+              action: FilledButton.icon(
+                onPressed: _roomsLoading ? null : () => _openForm(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Tambah Kamar'),
+              ),
+            )
+          else
+            ...items.map(
+              (room) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _RoomCard(
+                  room: room,
+                  onTap: () => _showDetail(room),
+                  onEdit: () => _openForm(room: room),
+                  onDelete: () => _delete(room),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -244,16 +259,12 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
       child: FilterChip(
         label: Text(label),
         selected: selected,
-        onSelected: (_) {
-          setState(() {
-            _status = value;
-            _roomsFuture = repo.getRooms(
-              property.id,
-              query: _query,
-              status: value,
-            );
-          });
-        },
+        onSelected: _roomsLoading
+            ? null
+            : (_) {
+                setState(() => _status = value);
+                _loadRooms();
+              },
       ),
     );
   }
@@ -274,10 +285,11 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Kamar ${room.roomNumber}',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                      'Kamar ' + room.roomNumber,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                   ),
                   AppStatusChip(
@@ -290,12 +302,14 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
               _DetailRow(
                 icon: Icons.attach_money,
                 label: 'Harga Sewa',
-                value: '${formatRupiah(room.price)} / bulan',
+                value: formatRupiah(room.price) + ' / bulan',
               ),
               _DetailRow(
                 icon: Icons.layers_outlined,
                 label: 'Posisi Lantai',
-                value: room.floor == null ? 'Lantai dasar / tidak diisi' : 'Lantai ${room.floor}',
+                value: room.floor == null
+                    ? 'Lantai dasar / tidak diisi'
+                    : 'Lantai ' + room.floor.toString(),
               ),
               _DetailRow(
                 icon: Icons.person_outline,
@@ -332,7 +346,8 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
+                        foregroundColor:
+                            Theme.of(context).colorScheme.error,
                       ),
                       onPressed: () {
                         Navigator.pop(context);
