@@ -201,7 +201,13 @@ class _ActiveTransactionScreenState extends ConsumerState<ActiveTransactionScree
                   const SizedBox(height: 24),
                   const Text('Pembayaran Berhasil!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
-                  FilledButton(onPressed: () => context.go('/home'), child: const Text('Kembali ke Beranda')),
+                  FilledButton(
+                    onPressed: () {
+                      refreshTenantPaymentData(ref);
+                      context.go('/home');
+                    },
+                    child: const Text('Kembali ke Beranda'),
+                  ),
                 ],
               ),
             );
@@ -216,7 +222,13 @@ class _ActiveTransactionScreenState extends ConsumerState<ActiveTransactionScree
                   const SizedBox(height: 24),
                   const Text('Pembayaran Gagal/Kedaluwarsa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
-                  FilledButton(onPressed: () => context.go('/home'), child: const Text('Kembali')),
+                  FilledButton(
+                    onPressed: () {
+                      refreshTenantPaymentData(ref);
+                      context.go('/home');
+                    },
+                    child: const Text('Kembali'),
+                  ),
                 ],
               ),
             );

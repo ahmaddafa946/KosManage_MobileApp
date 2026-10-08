@@ -23,6 +23,7 @@ final tenantActiveTransactionProvider =
 
 final tenantRecentTransactionsProvider =
     FutureProvider.autoDispose<List<PaymentTransaction>>((ref) async {
+  ref.watch(tenantPaymentDataRefreshProvider);
   final tenantAsync = await ref.watch(currentTenantProvider.future);
   if (tenantAsync == null) return [];
   return ref
