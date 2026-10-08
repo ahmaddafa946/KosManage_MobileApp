@@ -33,7 +33,7 @@ class SupabasePaymentTransactionRepository implements PaymentTransactionReposito
         .from('payment_transactions')
         .select('*')
         .eq('payment_id', paymentId)
-        .inFilter('status', ['created', 'pending'])
+        .inFilter('status', ['created', 'pending', 'waiting_confirmation'])
         .limit(1)
         .maybeSingle();
 
@@ -43,7 +43,7 @@ class SupabasePaymentTransactionRepository implements PaymentTransactionReposito
 
   @override
   Future<void> cancelTransaction(String transactionId) async {
-    // Only cancel if still pending/created
+    // Only cancel gateway transactions; cash requires owner confirmation.
     await _client
         .from('payment_transactions')
         .update({'status': 'cancelled'})
