@@ -21,10 +21,6 @@ void main() {
       final previousOnError = FlutterError.onError;
       FlutterError.onError = errors.add;
 
-      addTearDown(() {
-        FlutterError.onError = previousOnError;
-      });
-
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -33,6 +29,8 @@ void main() {
         ),
       );
       await tester.pump();
+
+      FlutterError.onError = previousOnError;
 
       expect(
         errors.where(
