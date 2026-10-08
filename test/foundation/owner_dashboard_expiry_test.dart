@@ -45,6 +45,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Sari'), 500);
 
       expect(find.text('Sari'), findsOneWidget);
       expect(find.text('Sisa 10 hari'), findsOneWidget);
@@ -89,6 +90,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Budi'), 500);
 
       expect(find.text('Budi'), findsOneWidget);
       expect(find.text('Berakhir hari ini'), findsOneWidget);
