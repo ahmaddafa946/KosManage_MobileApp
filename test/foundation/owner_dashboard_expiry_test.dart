@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:kos_manage_mobile/domain/models/owner_dashboard_data.dart';
 import 'package:kos_manage_mobile/features/owner/application/owner_dashboard_provider.dart';
 import 'package:kos_manage_mobile/features/owner/presentation/owner_dashboard_page.dart';
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('id_ID', null);
+  });
+
   testWidgets(
     'dashboard expiry card shows remaining rental days',
     (tester) async {
