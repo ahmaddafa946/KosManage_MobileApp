@@ -15,6 +15,16 @@ void main() {
       expect(shouldSyncPaymentGatewayStatus('success'), isFalse);
     });
 
+
+    test('refreshes tenant bill data when a transaction reaches a terminal state', () {
+      expect(shouldRefreshTenantPaymentData('success'), isTrue);
+      expect(shouldRefreshTenantPaymentData('failed'), isTrue);
+      expect(shouldRefreshTenantPaymentData('expired'), isTrue);
+      expect(shouldRefreshTenantPaymentData('cancelled'), isTrue);
+      expect(shouldRefreshTenantPaymentData('pending'), isFalse);
+      expect(shouldRefreshTenantPaymentData('waiting_confirmation'), isFalse);
+    });
+
     test('recognizes terminal payment states', () {
       expect(isTerminalPaymentTransactionStatus('success'), isTrue);
       expect(isTerminalPaymentTransactionStatus('failed'), isTrue);

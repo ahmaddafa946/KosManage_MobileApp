@@ -167,6 +167,14 @@ class ActiveTransactionScreen extends ConsumerStatefulWidget {
 
 class _ActiveTransactionScreenState extends ConsumerState<ActiveTransactionScreen> {
   Timer? _timer;
+  bool _hasRefreshedTenantPaymentData = false;
+
+  void _refreshTenantPaymentData() {
+    if (_hasRefreshedTenantPaymentData) return;
+    _hasRefreshedTenantPaymentData = true;
+    ref.invalidate(tenantRecentPaymentsProvider);
+    ref.invalidate(tenantRecentTransactionsProvider);
+  }
 
   @override
   void initState() {
@@ -193,6 +201,7 @@ class _ActiveTransactionScreenState extends ConsumerState<ActiveTransactionScree
           if (tx == null) return const Center(child: Text('Transaksi tidak ditemukan'));
 
           if (tx.status == 'success') {
+            _refreshTenantPaymentData();
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -208,6 +217,7 @@ class _ActiveTransactionScreenState extends ConsumerState<ActiveTransactionScree
           }
 
           if (tx.status == 'failed' || tx.status == 'expired' || tx.status == 'cancelled' || tx.isExpired) {
+            _refreshTenantPaymentData();
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

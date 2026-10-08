@@ -28,3 +28,7 @@ bool shouldSyncPaymentGatewayStatus(String status) {
 bool isTerminalPaymentTransactionStatus(String status) {
   return _terminalPaymentTransactionStatuses.contains(status);
 }
+
+bool shouldRefreshTenantPaymentData(String status) {
+  return _terminalPaymentTransactionStatuses.contains(status);
+}
