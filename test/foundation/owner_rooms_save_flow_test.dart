@@ -112,7 +112,13 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Simpan'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Nomor kamar sudah digunakan.'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SnackBar),
+        matching: find.text('Nomor kamar sudah digunakan.'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows the newly created room after save', (tester) async {
