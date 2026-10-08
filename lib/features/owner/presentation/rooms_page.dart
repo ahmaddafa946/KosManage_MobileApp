@@ -16,6 +16,7 @@ class RoomsPage extends ConsumerStatefulWidget {
 class _RoomsPageState extends ConsumerState<RoomsPage> {
   String _query = '';
   String _status = 'all';
+  int _roomsReloadKey = 0;
 
   Future<void> _openForm({OwnerRoom? room}) async {
     final property = await ref.read(ownerPropertyProvider.future);
@@ -24,7 +25,9 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
       context: context,
       builder: (_) => _RoomFormDialog(property: property, room: room),
     );
-    if (saved == true && mounted) setState(() {});
+    if (saved == true && mounted) {
+      setState(() => _roomsReloadKey++);
+    }
   }
 
   Future<void> _delete(OwnerRoom room) async {
@@ -93,6 +96,7 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
         final property = propertySnapshot.data!;
 
         return FutureBuilder<List<OwnerRoom>>(
+          key: ValueKey(_roomsReloadKey),
           future: repo.getRooms(property.id, query: _query, status: _status),
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
@@ -606,7 +610,16 @@ class _RoomFormDialogState extends ConsumerState<_RoomFormDialog> {
       }
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
-      setState(() => _error = _friendlyError(error));
+      final message = _friendlyError(error);
+      setState(() => _error = message);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
