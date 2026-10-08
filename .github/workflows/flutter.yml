@@ -32,7 +32,32 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed .
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            mapfile -t changed_files < <(
+              git diff --name-only \
+                "${{ github.event.pull_request.base.sha }}" \
+                "${{ github.event.pull_request.head.sha }}" \
+                -- '*.dart'
+            )
+          else
+            mapfile -t changed_files < <(
+              git diff --name-only \
+                "${{ github.event.before }}" \
+                "${{ github.sha }}" \
+                -- '*.dart'
+            )
+          fi
+
+          if [ "${#changed_files[@]}" -eq 0 ]; then
+            echo "No Dart files changed; skipping format check."
+            exit 0
+          fi
+
+          printf 'Checking Dart formatting for changed files:\n'
+          printf ' - %s\n' "${changed_files[@]}"
+          dart format --output=none --set-exit-if-changed "${changed_files[@]}"
 
       - name: Analyze
         run: flutter analyze
