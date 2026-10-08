@@ -84,12 +84,10 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Hapus kamar ' + room.roomNumber + '?'),
+        title: Text('Hapus kamar ${room.roomNumber}?'),
         content: Text(
           room.tenantName != null
-              ? 'Kamar ini masih memiliki penghuni aktif (' +
-                  room.tenantName! +
-                  '). Kosongkan terlebih dahulu.'
+              ? 'Kamar ini masih memiliki penghuni aktif (${room.tenantName}). Kosongkan terlebih dahulu.'
               : 'Data kamar akan dihapus permanen dari sistem.',
         ),
         actions: [
@@ -285,7 +283,7 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Kamar ' + room.roomNumber,
+                      'Kamar ${room.roomNumber}',
                       style: Theme.of(context)
                           .textTheme
                           .headlineSmall
@@ -302,14 +300,14 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
               _DetailRow(
                 icon: Icons.attach_money,
                 label: 'Harga Sewa',
-                value: formatRupiah(room.price) + ' / bulan',
+                value: '${formatRupiah(room.price)} / bulan',
               ),
               _DetailRow(
                 icon: Icons.layers_outlined,
                 label: 'Posisi Lantai',
                 value: room.floor == null
                     ? 'Lantai dasar / tidak diisi'
-                    : 'Lantai ' + room.floor.toString(),
+                    : 'Lantai ${room.floor}',
               ),
               _DetailRow(
                 icon: Icons.person_outline,
