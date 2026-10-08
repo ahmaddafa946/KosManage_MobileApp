@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../domain/models/owner_dashboard_data.dart';
+import '../../../domain/services/owner_display.dart';
 import '../application/owner_dashboard_provider.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
@@ -671,13 +672,31 @@ class _ExpirySection extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Text(
-                        _date(item.endDate),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            _date(item.endDate),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            rentalCountdown(
+                              item.endDate?.toIso8601String(),
+                            ).label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
