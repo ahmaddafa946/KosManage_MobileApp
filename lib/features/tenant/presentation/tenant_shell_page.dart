@@ -278,7 +278,7 @@ class _TenantHomeContent extends ConsumerWidget {
                 _tenantReportsProvider(myTenant.tenant.id),
               );
               final billsAsync = ref.watch(
-                _tenantRecentPaymentsProvider(myTenant),
+                tenantRecentPaymentsProvider(myTenant),
               );
               return Column(
                 children: [
@@ -361,7 +361,7 @@ class _TenantHomeContent extends ConsumerWidget {
       };
 }
 
-final _tenantRecentPaymentsProvider =
+final tenantRecentPaymentsProvider =
     FutureProvider.autoDispose.family<List<OwnerPayment>, MyTenant>((
   ref,
   myTenant,
@@ -511,7 +511,7 @@ class _TenantRecentPayments extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final billsAsync = ref.watch(_tenantRecentPaymentsProvider(myTenant));
+    final billsAsync = ref.watch(tenantRecentPaymentsProvider(myTenant));
     return billsAsync.when(
       loading: () => const AppSectionCard(
         title: 'Tagihan Terbaru',
@@ -695,13 +695,13 @@ class _TenantPaymentsTab extends ConsumerWidget {
         final pendingTx = txList.where((tx) => isActivePaymentTransactionStatus(tx.status)).firstOrNull;
 
         final billsAsync = ref.watch(
-          _tenantRecentPaymentsProvider(myTenant),
+          tenantRecentPaymentsProvider(myTenant),
         );
         return billsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => AppErrorState(
             message: error.toString(),
-            onRetry: () => ref.invalidate(_tenantRecentPaymentsProvider(myTenant)),
+            onRetry: () => ref.invalidate(tenantRecentPaymentsProvider(myTenant)),
           ),
           data: (list) {
             if (list.isEmpty) {
