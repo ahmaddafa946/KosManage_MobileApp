@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
+import '../../../domain/services/rental_duration.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
 
@@ -359,12 +360,14 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
   late final TextEditingController _identity;
   late final TextEditingController _start;
   late final TextEditingController _end;
+  late RentalDuration? _rentalDuration;
   late final TextEditingController _rent;
   late final TextEditingController _deposit;
   late final TextEditingController _notes;
 
   List<OwnerRoom> _rooms = const [];
   String? _roomId;
+  late final GlobalKey<FormState> _formKey;
   bool _loading = false;
   String? _error;
 
@@ -380,6 +383,8 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
       text: tenant?.startDate ?? _dateValue(DateTime.now()),
     );
     _end = TextEditingController(text: tenant?.endDate ?? '');
+    _rentalDuration = tenant == null ? null : RentalDuration.custom;
+    _formKey = GlobalKey<FormState>();
     _rent = TextEditingController(
       text: tenant?.rentPrice?.toStringAsFixed(0) ?? '',
     );
@@ -417,19 +422,73 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
     super.dispose();
   }
 
-  Future<void> _pick(TextEditingController controller) async {
-    final current = DateTime.tryParse(controller.text) ?? DateTime.now();
+  Future<void> _pickStartDate() async {
+    final current = DateTime.tryParse(_start.text) ?? DateTime.now();
     final value = await showDatePicker(
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
       initialDate: current,
+      helpText: 'Pilih tanggal mulai sewa',
     );
-    if (value != null) controller.text = _dateValue(value);
+    if (value == null || !mounted) return;
+
+    setState(() {
+      _start.text = _dateValue(value);
+      if (_rentalDuration != null && _rentalDuration != RentalDuration.custom) {
+        _end.text = _dateValue(
+          calculateRentalEndDate(
+            startDate: value,
+            duration: _rentalDuration!,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<void> _pickCustomEndDate() async {
+    final start = DateTime.tryParse(_start.text) ?? DateTime.now();
+    final current = DateTime.tryParse(_end.text) ??
+        start.add(const Duration(days: 1));
+    final firstDate = start.add(const Duration(days: 1));
+    final value = await showDatePicker(
+      context: context,
+      firstDate: firstDate,
+      lastDate: DateTime(2100),
+      initialDate: current.isBefore(firstDate) ? firstDate : current,
+      helpText: 'Pilih tanggal berakhir',
+    );
+    if (value == null || !mounted) return;
+
+    setState(() => _end.text = _dateValue(value));
+  }
+
+  void _updateRentalDuration(RentalDuration? value) {
+    setState(() {
+      _rentalDuration = value;
+      if (value != null && value != RentalDuration.custom) {
+        final start = DateTime.tryParse(_start.text);
+        if (start != null) {
+          _end.text = _dateValue(
+            calculateRentalEndDate(
+              startDate: start,
+              duration: value,
+            ),
+          );
+        }
+      }
+    });
   }
 
   Future<void> _submit() async {
     final name = _name.text.trim();
+    final startDate = DateTime.tryParse(_start.text.trim());
+    final customEndDate = DateTime.tryParse(_end.text.trim());
+    final durationError = rentalDurationValidationMessage(
+      duration: _rentalDuration,
+      startDate: startDate ?? DateTime.now(),
+      customEndDate: customEndDate,
+    );
     final rent = num.tryParse(
       _rent.text.trim().replaceAll('.', '').replaceAll(',', ''),
     );
@@ -442,12 +501,21 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
     if (name.isEmpty ||
         rent == null ||
         rent < 0 ||
-        _start.text.trim().isEmpty) {
+        startDate == null ||
+        durationError != null) {
       setState(
-        () => _error = 'Nama, tanggal mulai, dan harga sewa wajib valid.',
+        () => _error = durationError ??
+            'Nama, tanggal mulai, dan harga sewa wajib valid.',
       );
+      _formKey.currentState?.validate();
       return;
     }
+
+    final endDate = calculateRentalEndDate(
+      startDate: startDate,
+      duration: _rentalDuration!,
+      customEndDate: customEndDate,
+    );
 
     setState(() {
       _loading = true;
@@ -465,7 +533,7 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
           email: _email.text,
           identityNumber: _identity.text,
           startDate: _start.text.trim(),
-          endDate: _end.text.trim(),
+          endDate: _dateValue(endDate),
           rentPrice: rent,
           deposit: deposit,
           notes: _notes.text,
@@ -479,7 +547,7 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
           email: _email.text,
           identityNumber: _identity.text,
           startDate: _start.text.trim(),
-          endDate: _end.text.trim(),
+          endDate: _dateValue(endDate),
           rentPrice: rent,
           deposit: deposit,
           notes: _notes.text,
@@ -518,9 +586,11 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     TextField(
                       controller: _name,
                       textInputAction: TextInputAction.next,
@@ -583,32 +653,68 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final narrow = constraints.maxWidth < 340;
+                        final durationField = DropdownButtonFormField<RentalDuration>(
+                          initialValue: _rentalDuration,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Durasi sewa',
+                            hintText: 'Pilih satu',
+                          ),
+                          items: RentalDuration.values
+                              .map(
+                                (duration) => DropdownMenuItem<RentalDuration>(
+                                  value: duration,
+                                  child: Text(rentalDurationLabel(duration)),
+                                ),
+                              )
+                              .toList(growable: false),
+                          onChanged: _loading ? null : _updateRentalDuration,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          validator: (value) => rentalDurationValidationMessage(
+                            duration: value,
+                            startDate:
+                                DateTime.tryParse(_start.text) ?? DateTime.now(),
+                            customEndDate: DateTime.tryParse(_end.text),
+                          ),
+                        );
+                        final startField = _DateField(
+                          label: 'Mulai sewa',
+                          controller: _start,
+                          onTap: _pickStartDate,
+                        );
+                        final endField = _DateField(
+                          label: _rentalDuration == RentalDuration.custom
+                              ? 'Berakhir (Custom)'
+                              : 'Berakhir',
+                          controller: _end,
+                          onTap: _rentalDuration == RentalDuration.custom
+                              ? _pickCustomEndDate
+                              : null,
+                          enabled: _rentalDuration != null,
+                        );
+
                         if (narrow) {
                           return Column(
                             children: [
-                              _DateField(label: 'Mulai sewa', controller: _start, onTap: () => _pick(_start)),
+                              startField,
                               const SizedBox(height: 12),
-                              _DateField(label: 'Berakhir (opsional)', controller: _end, onTap: () => _pick(_end)),
+                              durationField,
+                              const SizedBox(height: 12),
+                              endField,
                             ],
                           );
                         }
-                        return Row(
+                        return Column(
                           children: [
-                            Expanded(
-                              child: _DateField(
-                                label: 'Mulai sewa',
-                                controller: _start,
-                                onTap: () => _pick(_start),
-                              ),
+                            Row(
+                              children: [
+                                Expanded(child: startField),
+                                const SizedBox(width: 10),
+                                Expanded(child: durationField),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _DateField(
-                                label: 'Berakhir',
-                                controller: _end,
-                                onTap: () => _pick(_end),
-                              ),
-                            ),
+                            const SizedBox(height: 12),
+                            endField,
                           ],
                         );
                       },
@@ -665,7 +771,8 @@ class _TenantFormDialogState extends ConsumerState<_TenantFormDialog> {
                           ),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -798,17 +905,20 @@ class _DateField extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.onTap,
+    this.enabled = true,
   });
 
   final String label;
   final TextEditingController controller;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       readOnly: true,
+      enabled: enabled,
       onTap: onTap,
       decoration: InputDecoration(
         labelText: label,
