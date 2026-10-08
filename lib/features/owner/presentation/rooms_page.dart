@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/owner_management.dart';
+import '../../../data/repositories/owner_rooms_repository.dart';
 import '../../../domain/services/owner_display.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
