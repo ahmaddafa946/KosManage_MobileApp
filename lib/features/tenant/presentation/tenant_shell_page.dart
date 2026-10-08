@@ -10,6 +10,7 @@ import '../../../domain/services/owner_display.dart';
 import '../../settings/presentation/settings_page.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/tenant_payment_providers.dart';
+import '../../../domain/services/payment_transaction_status.dart';
 import 'payment_flow.dart';
 
 final tenantRepositoryProvider = Provider<TenantRepository>((ref) {
@@ -691,7 +692,7 @@ class _TenantPaymentsTab extends ConsumerWidget {
         // Watch recent transactions
         final txAsync = ref.watch(tenantRecentTransactionsProvider);
         final txList = txAsync.value ?? [];
-        final pendingTx = txList.where((tx) => tx.status == 'created' || tx.status == 'pending').firstOrNull;
+        final pendingTx = txList.where((tx) => isActivePaymentTransactionStatus(tx.status)).firstOrNull;
 
         final billsAsync = ref.watch(
           _tenantRecentPaymentsProvider(myTenant),
