@@ -74,50 +74,75 @@ class _PaymentSelectionSheetState extends ConsumerState<PaymentSelectionSheet> {
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 24),
-            RadioListTile(
-              title: const Text('QRIS (Otomatis)'),
-              subtitle: const Text('Bayar dengan GoPay, OVO, Dana, dll'),
-              value: 'qris',
+            RadioGroup<String>(
               groupValue: _selectedMethod,
-              onChanged: (v) => setState(() {
-                _selectedMethod = v.toString();
-                _selectedBank = null;
-              }),
-            ),
-            RadioListTile(
-              title: const Text('Transfer Bank (Virtual Account)'),
-              value: 'bank_transfer',
-              groupValue: _selectedMethod,
-              onChanged: (v) => setState(() {
-                _selectedMethod = v.toString();
-                _selectedBank = 'bca'; // default
-              }),
-            ),
-            if (_selectedMethod == 'bank_transfer')
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: DropdownButtonFormField<String>(
-                  value: _selectedBank,
-                  decoration: const InputDecoration(labelText: 'Pilih Bank', border: OutlineInputBorder()),
-                  items: const [
-                    DropdownMenuItem(value: 'bca', child: Text('BCA Virtual Account')),
-                    DropdownMenuItem(value: 'bni', child: Text('BNI Virtual Account')),
-                    DropdownMenuItem(value: 'bri', child: Text('BRI Virtual Account')),
-                    DropdownMenuItem(value: 'mandiri', child: Text('Mandiri Virtual Account')),
-                    DropdownMenuItem(value: 'permata', child: Text('Permata Virtual Account')),
-                  ],
-                  onChanged: (v) => setState(() => _selectedBank = v),
-                ),
+              onChanged: (value) {
+                if (value == null) return;
+
+                setState(() {
+                  _selectedMethod = value;
+                  _selectedBank = value == 'bank_transfer' ? 'bca' : null;
+                });
+              },
+              child: Column(
+                children: [
+                  RadioListTile<String>(
+                    title: const Text('QRIS (Otomatis)'),
+                    subtitle: const Text('Bayar dengan GoPay, OVO, Dana, dll'),
+                    value: 'qris',
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('Transfer Bank (Virtual Account)'),
+                    value: 'bank_transfer',
+                  ),
+                  if (_selectedMethod == 'bank_transfer')
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedBank,
+                        decoration: const InputDecoration(
+                          labelText: 'Pilih Bank',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'bca',
+                            child: Text('BCA Virtual Account'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'bni',
+                            child: Text('BNI Virtual Account'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'bri',
+                            child: Text('BRI Virtual Account'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'mandiri',
+                            child: Text('Mandiri Virtual Account'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'permata',
+                            child: Text('Permata Virtual Account'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() => _selectedBank = value);
+                        },
+                      ),
+                    ),
+                  RadioListTile<String>(
+                    title: const Text('Tunai (Cash)'),
+                    subtitle: const Text(
+                      'Bayar langsung ke pemilik/pengurus',
+                    ),
+                    value: 'cash',
+                  ),
+                ],
               ),
-            RadioListTile(
-              title: const Text('Tunai (Cash)'),
-              subtitle: const Text('Bayar langsung ke pemilik/pengurus'),
-              value: 'cash',
-              groupValue: _selectedMethod,
-              onChanged: (v) => setState(() {
-                _selectedMethod = v.toString();
-                _selectedBank = null;
-              }),
             ),
             const SizedBox(height: 24),
             FilledButton(
