@@ -278,7 +278,7 @@ class _TenantHomeContent extends ConsumerWidget {
                 _tenantReportsProvider(myTenant.tenant.id),
               );
               final billsAsync = ref.watch(
-                _tenantRecentPaymentsProvider(myTenant),
+                tenantRecentPaymentsProvider(myTenant),
               );
               return Column(
                 children: [
@@ -361,15 +361,22 @@ class _TenantHomeContent extends ConsumerWidget {
       };
 }
 
-final _tenantRecentPaymentsProvider =
+final tenantPaymentDataRefreshProvider = StateProvider<int>((ref) => 0);
+
+final tenantRecentPaymentsProvider =
     FutureProvider.autoDispose.family<List<OwnerPayment>, MyTenant>((
   ref,
   myTenant,
 ) async {
+  ref.watch(tenantPaymentDataRefreshProvider);
   return ref
       .watch(tenantRepositoryProvider)
       .getMyPayments(myTenant.propertyId, myTenant.tenant.id);
 });
+
+void refreshTenantPaymentData(WidgetRef ref) {
+  ref.read(tenantPaymentDataRefreshProvider.notifier).state++;
+}
 
 final _tenantReportsProvider =
     FutureProvider.autoDispose.family<List<OwnerMaintenanceReport>, String>((
@@ -511,7 +518,7 @@ class _TenantRecentPayments extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final billsAsync = ref.watch(_tenantRecentPaymentsProvider(myTenant));
+    final billsAsync = ref.watch(tenantRecentPaymentsProvider(myTenant));
     return billsAsync.when(
       loading: () => const AppSectionCard(
         title: 'Tagihan Terbaru',
@@ -695,13 +702,13 @@ class _TenantPaymentsTab extends ConsumerWidget {
         final pendingTx = txList.where((tx) => isActivePaymentTransactionStatus(tx.status)).firstOrNull;
 
         final billsAsync = ref.watch(
-          _tenantRecentPaymentsProvider(myTenant),
+          tenantRecentPaymentsProvider(myTenant),
         );
         return billsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => AppErrorState(
             message: error.toString(),
-            onRetry: () => ref.invalidate(_tenantRecentPaymentsProvider(myTenant)),
+            onRetry: () => ref.invalidate(tenantRecentPaymentsProvider(myTenant)),
           ),
           data: (list) {
             if (list.isEmpty) {
