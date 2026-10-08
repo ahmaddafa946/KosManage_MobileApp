@@ -16,7 +16,7 @@ class RoomsPage extends ConsumerStatefulWidget {
 class _RoomsPageState extends ConsumerState<RoomsPage> {
   String _query = '';
   String _status = 'all';
-  int _roomsReloadKey = 0;
+  Future<List<OwnerRoom>>? _roomsFuture;
 
   Future<void> _openForm({OwnerRoom? room}) async {
     final property = await ref.read(ownerPropertyProvider.future);
@@ -26,7 +26,13 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
       builder: (_) => _RoomFormDialog(property: property, room: room),
     );
     if (saved == true && mounted) {
-      setState(() => _roomsReloadKey++);
+      setState(() {
+        _roomsFuture = ref.read(ownerRoomsRepositoryProvider).getRooms(
+              property.id,
+              query: _query,
+              status: _status,
+            );
+      });
     }
   }
 
@@ -96,8 +102,11 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
         final property = propertySnapshot.data!;
 
         return FutureBuilder<List<OwnerRoom>>(
-          key: ValueKey(_roomsReloadKey),
-          future: repo.getRooms(property.id, query: _query, status: _status),
+          future: _roomsFuture ??= repo.getRooms(
+            property.id,
+            query: _query,
+            status: _status,
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
@@ -111,7 +120,16 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
             final items = snapshot.data ?? const <OwnerRoom>[];
 
             return RefreshIndicator(
-              onRefresh: () async => setState(() {}),
+              onRefresh: () async {
+                setState(() {
+                  _roomsFuture = repo.getRooms(
+                    property.id,
+                    query: _query,
+                    status: _status,
+                  );
+                });
+                await _roomsFuture;
+              },
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                 children: [
@@ -151,7 +169,16 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                   // Search Field
                   AppSearchField(
                     hint: 'Cari nomor kamar...',
-                    onChanged: (value) => setState(() => _query = value),
+                    onChanged: (value) {
+                      setState(() {
+                        _query = value;
+                        _roomsFuture = repo.getRooms(
+                          property.id,
+                          query: value,
+                          status: _status,
+                        );
+                      });
+                    },
                   ),
                   const SizedBox(height: 12),
 
@@ -160,10 +187,10 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _filterChip('Semua', 'all'),
-                        _filterChip('Kosong', 'available'),
-                        _filterChip('Terisi', 'occupied'),
-                        _filterChip('Maintenance', 'maintenance'),
+                        _filterChip('Semua', 'all', property, repo),
+                        _filterChip('Kosong', 'available', property, repo),
+                        _filterChip('Terisi', 'occupied', property, repo),
+                        _filterChip('Maintenance', 'maintenance', property, repo),
                       ],
                     ),
                   ),
@@ -204,14 +231,28 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
     );
   }
 
-  Widget _filterChip(String label, String value) {
+  Widget _filterChip(
+    String label,
+    String value,
+    OwnerProperty property,
+    OwnerRoomsRepository repo,
+  ) {
     final selected = _status == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
         label: Text(label),
         selected: selected,
-        onSelected: (_) => setState(() => _status = value),
+        onSelected: (_) {
+          setState(() {
+            _status = value;
+            _roomsFuture = repo.getRooms(
+              property.id,
+              query: _query,
+              status: value,
+            );
+          });
+        },
       ),
     );
   }
