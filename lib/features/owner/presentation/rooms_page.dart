@@ -43,6 +43,7 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
     try {
       final property =
           _property ?? await ref.read(ownerPropertyProvider.future);
+      if (property == null) return;
       final rooms = await ref.read(ownerRoomsRepositoryProvider).getRooms(
             property.id,
             query: _query,
@@ -66,9 +67,8 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
   }
 
   Future<void> _openForm({OwnerRoom? room}) async {
-    final property =
-        _property ?? await ref.read(ownerPropertyProvider.future);
-    if (!mounted) return;
+    final property = _property;
+    if (property == null) return;
 
     final saved = await showDialog<bool>(
       context: context,
