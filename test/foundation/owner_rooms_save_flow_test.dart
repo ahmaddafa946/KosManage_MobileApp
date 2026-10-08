@@ -137,6 +137,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Simpan'));
     await tester.pumpAndSettle();
 
+    expect(repository.getRoomsCalls, greaterThanOrEqualTo(2));
     expect(find.text('Kamar 101'), findsOneWidget);
     expect(repository.rooms, hasLength(1));
   });
