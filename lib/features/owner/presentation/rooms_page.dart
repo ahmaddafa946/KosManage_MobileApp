@@ -178,7 +178,7 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      items.length.toString() + ' kamar ditemukan',
+                      '${items.length} kamar ditemukan',
                       style: TextStyle(
                         fontSize: 13,
                         color: scheme.onSurfaceVariant,
