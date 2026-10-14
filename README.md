@@ -7,6 +7,7 @@ Flutter mobile client untuk KosManage dengan Supabase yang sama dengan aplikasi 
 Repository ini sekarang memiliki:
 
 - PRD mobile
+- dokumen knowledge domain pengelolaan rumah kos
 - arsitektur feature-oriented
 - Flutter application shell
 - Material 3 light/dark theme
@@ -83,12 +84,13 @@ Source menggunakan String.fromEnvironment sehingga konfigurasi tidak diperlakuka
     flutter analyze
     flutter test
 
-## Architecture
+## Architecture and Domain
 
-Lihat:
+Dokumen pengembangan terkait:
 
-- PRD.md
-- ARCHITECTURE.md
+- [Knowledge Domain — Pengelolaan Rumah Kos](docs/KNOWLEDGE-DOMAIN.md)
+- [PRD Mobile](PRD.md)
+- [Architecture](ARCHITECTURE.md)
 
 Struktur utama:
 
