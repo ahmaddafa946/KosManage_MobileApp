@@ -74,7 +74,21 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish APK to GitHub Release
+      - name: Publish latest APK for direct download
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: KosManage APK (Latest)
+          body: |
+            APK Android terbaru yang dibangun otomatis dari branch main.
+            Unduh KosManage.apk pada bagian Assets di bawah.
+          files: build/app/outputs/flutter-apk/KosManage.apk
+          make_latest: true
+          prerelease: false
+          fail_on_unmatched_files: true
+
+      - name: Publish versioned APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
