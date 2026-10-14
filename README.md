@@ -139,3 +139,20 @@ iOS release membutuhkan macOS/Xcode.
 ## Notes
 
 Repository ini tetap menggunakan single source of truth Supabase. Mobile tidak membuat database/API backend kedua.
+
+
+### Download APK dari GitHub
+
+Workflow **Build Android APK** otomatis berjalan saat ada push ke branch `main`, dan dapat dijalankan manual dari tab **Actions**. File APK tersedia di bagian **Artifacts** pada hasil workflow.
+
+Sebelum build pertama, atur konfigurasi repository di **Settings → Secrets and variables → Actions**:
+- Tambahkan repository variable `SUPABASE_URL` dengan URL project Supabase.
+- Tambahkan repository secret `SUPABASE_ANON_KEY` dengan publishable/anon key Supabase. Jangan gunakan service-role key.
+
+**Cara download APK:**
+1. Buka tab **Actions** pada repository.
+2. Pilih workflow **Build Android APK** lalu buka run yang berstatus sukses.
+3. Di bagian **Artifacts**, download `KosManage-Android-APK` (file ZIP).
+4. Ekstrak ZIP untuk memperoleh `KosManage.apk`, lalu buka APK di Android untuk memasangnya. Jika diminta, izinkan pemasangan aplikasi dari sumber tersebut.
+
+Untuk membuat halaman **Releases** berisi APK yang bisa diunduh langsung, buat dan push tag versi, misalnya `v0.1.0`. Jika workflow sukses, APK akan dilampirkan ke GitHub Release. APK dari workflow ini belum ditandatangani dengan kunci rilis pribadi; sebelum distribusi produksi, siapkan signing key Android yang aman.
