@@ -20,6 +20,48 @@ Repository ini sekarang memiliki:
 - GitHub Actions CI
 - struktur untuk Android/iOS/web; application ID Android menggunakan prefix provisional `id.kosmanage` saat platform folders digenerate
 
+## Fitur Aplikasi
+
+Daftar berikut merangkum fitur yang sudah tersedia pada kode aplikasi saat ini. Kelengkapan alur tetap perlu divalidasi melalui pengujian di perangkat dan koneksi Supabase.
+
+### Autentikasi dan tampilan umum
+- Login menggunakan email dan kata sandi melalui Supabase Auth.
+- Pengarahan halaman berdasarkan peran akun: pemilik kos (Owner) atau penghuni (Tenant).
+- Pengelolaan sesi dan logout.
+- Navigasi mobile menggunakan bottom navigation.
+- Tema Material 3 dengan pilihan mode terang, gelap, atau mengikuti sistem.
+- Halaman profil dan pengaturan akun.
+
+### Fitur pemilik kos (Owner)
+- **Dashboard kos:** ringkasan dan informasi operasional kos.
+- **Manajemen kamar:** melihat daftar kamar, mencari dan memfilter kamar, menambah/mengubah data kamar, serta menghapus kamar dengan pemeriksaan penghuni aktif.
+- **Manajemen penghuni:** melihat, mencari, memfilter, menambah, mengubah, menonaktifkan/checkout, dan menghapus data penghuni.
+- **Pembayaran:** melihat catatan pembayaran, mencari berdasarkan nama penghuni/kamar, memfilter periode/status/metode, serta menambah, mengubah, dan menghapus catatan pembayaran.
+- **Laporan operasional:** ringkasan kondisi operasional dan laporan maintenance.
+- **Laporan keuangan:** ringkasan tagihan, pembayaran, dan tunggakan sesuai data yang tersedia.
+- **Pemrosesan laporan maintenance:** memperbarui status melalui tahapan diajukan, diproses, selesai, dan ditutup.
+- **Format dan tampilan data:** komponen antarmuka mobile, indikator loading/error, konfirmasi tindakan penting, serta penyegaran daftar.
+
+### Fitur penghuni kos (Tenant)
+- **Beranda penghuni:** ringkasan informasi pribadi terkait kos.
+- **Kamar saya:** akses informasi kamar yang terkait dengan akun penghuni.
+- **Tagihan dan riwayat pembayaran:** melihat informasi pembayaran milik penghuni serta alur pembayaran simulasi.
+- **Bantuan dan laporan:** akses fitur bantuan/laporan maintenance dari area penghuni.
+- **Profil dan pengaturan:** melihat profil akun, memilih tema, dan logout.
+
+### Integrasi dan fondasi teknis
+- Supabase digunakan sebagai sumber data utama untuk autentikasi dan data aplikasi.
+- Repository terpisah untuk akses data kamar, penghuni, pembayaran, laporan, profil, dan dashboard.
+- State management menggunakan Riverpod dan navigasi menggunakan GoRouter.
+- Konfigurasi URL dan publishable/anon key Supabase melalui compile-time defines.
+- Fondasi unit/widget test serta GitHub Actions untuk pemeriksaan dan build.
+- Workflow GitHub Actions disiapkan untuk membangun APK Android.
+
+### Batasan yang perlu diketahui
+- Pembayaran dari sisi penghuni masih **simulasi**, bukan transaksi QRIS/payment gateway sungguhan.
+- Status build APK dan keberhasilan seluruh alur fitur harus dikonfirmasi melalui hasil workflow dan pengujian pada perangkat.
+- Fitur yang masih berupa rancangan, placeholder, atau belum lolos pengujian end-to-end tidak dianggap sebagai fitur produksi yang sudah terverifikasi.
+
 ## Stack
 
 - Flutter stable 3.47.5
