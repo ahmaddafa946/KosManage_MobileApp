@@ -156,3 +156,12 @@ Sebelum build pertama, atur konfigurasi repository di **Settings → Secrets and
 4. Ekstrak ZIP untuk memperoleh `KosManage.apk`, lalu buka APK di Android untuk memasangnya. Jika diminta, izinkan pemasangan aplikasi dari sumber tersebut.
 
 Untuk membuat halaman **Releases** berisi APK yang bisa diunduh langsung, buat dan push tag versi, misalnya `v0.1.0`. Jika workflow sukses, APK akan dilampirkan ke GitHub Release. APK dari workflow ini belum ditandatangani dengan kunci rilis pribadi; sebelum distribusi produksi, siapkan signing key Android yang aman.
+
+
+### Download APK langsung
+
+Setelah workflow build Android berhasil, APK terbaru dapat diunduh langsung melalui tautan permanen berikut:
+
+**[Download KosManage.apk](https://github.com/ahmaddafa946/KosManage_MobileApp/releases/latest/download/KosManage.apk)**
+
+Tautan ini mengarah ke APK pada GitHub Release terbaru. Build otomatis memerlukan repository variable `SUPABASE_URL` dan repository secret `SUPABASE_ANON_KEY` yang sudah diatur di Settings → Secrets and variables → Actions. Jika tautan belum tersedia, jalankan workflow **Build Android APK** dari tab Actions dan pastikan build berhasil.
