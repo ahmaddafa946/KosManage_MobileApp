@@ -810,6 +810,9 @@ Deno.serve(async (req: Request) => {
   const appSecret = Deno.env.get("WHATSAPP_APP_SECRET");
   if (!appSecret) return errorResponse("WhatsApp webhook is not configured.", 503, "NOT_CONFIGURED");
   const rawBody = await req.text();
+  if (rawBody.length > 1_000_000) {
+    return errorResponse("Webhook payload is too large.", 413, "PAYLOAD_TOO_LARGE");
+  }
   const signature = req.headers.get("x-hub-signature-256") ?? "";
   const isValid = await verifyMetaSignature(rawBody, signature, appSecret).catch(() => false);
   if (!isValid) return errorResponse("Invalid Meta webhook signature.", 401, "INVALID_SIGNATURE");
