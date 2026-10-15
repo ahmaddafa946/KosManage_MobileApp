@@ -52,7 +52,7 @@ async function sendTemplate(to: string, invoice: Invoice, tenant: Tenant): Promi
   const version = Deno.env.get("WHATSAPP_API_VERSION");
   const templateName = Deno.env.get("WHATSAPP_BILLING_TEMPLATE_NAME");
   const language = Deno.env.get("WHATSAPP_TEMPLATE_LANGUAGE") ?? "id";
-  if (!token || !phoneId || !version || !/^v\\d+\\.\\d+$/.test(version) || !templateName) {
+  if (!token || !phoneId || !version || !/^v\d+\.\d+$/.test(version) || !templateName) {
     throw new Error("WhatsApp configuration is incomplete.");
   }
   const recipient = normalizePhone(to);
