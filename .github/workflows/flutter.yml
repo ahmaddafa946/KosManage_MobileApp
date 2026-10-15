@@ -25,6 +25,11 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Flutter version
         run: flutter --version
 
@@ -64,3 +69,10 @@ jobs:
 
       - name: Unit and widget tests
         run: flutter test
+
+      - name: Test WhatsApp billing logic
+        working-directory: supabase/functions
+        run: deno test whatsapp-billing/deno.test.ts
+
+      - name: Type-check WhatsApp Edge Functions
+        run: deno check supabase/functions/whatsapp-billing/index.ts supabase/functions/whatsapp-billing-consent/index.ts
