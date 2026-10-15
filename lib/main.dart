@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
+import 'app/theme/app_theme.dart';
 import 'core/config/app_config.dart';
 import 'core/bootstrap/app_bootstrap.dart';
 
@@ -32,10 +33,7 @@ class ConfigurationMissingApp extends StatelessWidget {
     return MaterialApp(
       title: 'KosManage Mobile',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B6E69)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
       home: const Scaffold(
         body: SafeArea(
           child: Center(
