@@ -123,9 +123,9 @@ class _HeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final occupancy = totalRooms == 0
+    final double occupancy = totalRooms == 0
         ? 0.0
-        : (occupiedRooms / totalRooms).clamp(0.0, 1.0);
+        : (occupiedRooms / totalRooms).clamp(0.0, 1.0).toDouble();
     final percentage = (occupancy * 100).round();
 
     return ClipRRect(
