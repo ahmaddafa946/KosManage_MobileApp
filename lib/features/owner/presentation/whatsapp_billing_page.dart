@@ -64,9 +64,9 @@ class _WhatsappBillingPageState extends ConsumerState<WhatsappBillingPage> {
         return;
       }
       setState(() {
-        _success = 'Pesan penagihan telah diterima API WhatsApp untuk diproses '
-            'pada tagihan ${payment.invoiceNumber ?? payment.billingPeriod}. '
-            'Status terkirim dapat diperiksa melalui webhook.';
+        _success = 'API WhatsApp menerima permintaan pesan untuk tagihan '
+            '${payment.invoiceNumber ?? payment.billingPeriod}. '
+            'Penerimaan API tidak selalu berarti pesan sudah terkirim ke penyewa.';
       });
     } on FunctionException catch (error) {
       if (!mounted) return;
