@@ -8,6 +8,7 @@ import {
 import {
   constantTimeEqual,
   isUuid,
+  MetaSendOutcomeError,
   normalizePhone,
   parseIncomingAction,
   verifyMetaSignature,
@@ -119,27 +120,45 @@ async function sendMetaMessage(to: string, message: Record<string, unknown>) {
   const { token, phoneId, version } = getConfig();
   const recipient = normalizePhone(to);
   if (!recipient) throw new Error("Invalid WhatsApp recipient number.");
-  const response = await fetch(
-    `https://graph.facebook.com/${version}/${phoneId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://graph.facebook.com/${version}/${phoneId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        signal: AbortSignal.timeout(15_000),
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: recipient,
+          ...message,
+        }),
       },
-      signal: AbortSignal.timeout(15_000),
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: recipient,
-        ...message,
-      }),
-    },
-  );
-  const result = await response.json().catch(() => ({})) as Record<string, unknown>;
+    );
+  } catch {
+    throw new MetaSendOutcomeError(
+      "Hasil pengiriman balasan belum dapat dipastikan; kirim perintah lagi bila pesan tidak muncul.",
+      "unknown",
+    );
+  }
+  const result = await response.json().catch(() => null) as Record<string, unknown> | null;
   if (!response.ok) {
     console.error("WhatsApp webhook reply rejected", response.status);
-    throw new Error("WhatsApp gagal mengirim balasan. Silakan coba kembali.");
+    throw new MetaSendOutcomeError(
+      "WhatsApp menolak balasan. Silakan kirim perintah lagi setelah konfigurasi diperbaiki.",
+      response.status >= 500 ? "unknown" : "rejected",
+    );
+  }
+  const messages = result?.messages;
+  if (!Array.isArray(messages) || !messages[0] || typeof messages[0].id !== "string") {
+    throw new MetaSendOutcomeError(
+      "Meta mengembalikan hasil tanpa ID pesan; status pengiriman belum dapat dipastikan.",
+      "unknown",
+    );
   }
   return result;
 }
@@ -358,7 +377,8 @@ async function notifyExistingTransaction(phone: string, tx: Transaction, invoice
     const caption = `QRIS aktif untuk tagihan ${invoice.invoice_number || invoice.billing_period}. Nominal: ${formatRupiah(Number(tx.gross_amount))}. Setelah pembayaran, status akan diperbarui melalui payment gateway.`;
     try {
       await sendQrImage(phone, tx.qr_url, caption, replyTo);
-    } catch {
+    } catch (err) {
+      if (err instanceof MetaSendOutcomeError && err.outcome === "unknown") throw err;
       await sendText(phone, `Masih ada transaksi QRIS aktif (${tx.order_id}) sebesar ${formatRupiah(Number(tx.gross_amount))}. Buka detail pembayaran di aplikasi KosManage dan jangan membuat transaksi baru.`, replyTo);
     }
     return;
@@ -571,6 +591,7 @@ async function createGatewayRequest(
         await sendQrImage(phone, qrUrl, caption, replyTo);
         return;
       } catch (err) {
+        if (err instanceof MetaSendOutcomeError && err.outcome === "unknown") throw err;
         console.error("QR image send failed; sending transaction fallback.", err);
       }
     }
@@ -726,6 +747,17 @@ async function handleInboundMessage(
     }).eq("id", claim.id).eq("status", "processing");
     if (finishError) throw finishError;
   } catch (err) {
+    if (err instanceof MetaSendOutcomeError) {
+      await admin.from("whatsapp_billing_inbound_events").update({
+        status: err.outcome === "unknown" ? "uncertain" : "failed",
+        processing_started_at: null,
+        updated_at: new Date().toISOString(),
+        last_error: err.message.slice(0, 500),
+      }).eq("id", claim.id).eq("status", "processing");
+      // Meta may have accepted an outbound reply despite a network error. Acknowledge
+      // the inbound event so a webhook retry cannot accidentally duplicate that reply.
+      return;
+    }
     await admin.from("whatsapp_billing_inbound_events").update({
       status: "failed", processing_started_at: null, updated_at: new Date().toISOString(),
       last_error: err instanceof Error ? err.message.slice(0, 500) : "Webhook processing failed.",
