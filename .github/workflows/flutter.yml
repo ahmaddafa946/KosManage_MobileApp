@@ -72,7 +72,7 @@ jobs:
 
       - name: Test WhatsApp billing logic
         working-directory: supabase/functions
-        run: deno test whatsapp-billing/deno.test.ts
+        run: deno test whatsapp-billing whatsapp-webhook
 
       - name: Type-check WhatsApp Edge Functions
-        run: deno check supabase/functions/whatsapp-billing/index.ts supabase/functions/whatsapp-billing-consent/index.ts
+        run: deno check supabase/functions/whatsapp-billing/index.ts supabase/functions/whatsapp-billing-consent/index.ts supabase/functions/whatsapp-webhook/index.ts
