@@ -5,6 +5,7 @@ import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
+import 'whatsapp_billing_page.dart';
 
 class PaymentsPage extends ConsumerStatefulWidget {
   const PaymentsPage({super.key});
@@ -181,6 +182,31 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
                         label: const Text('Catat'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+                  Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: const Color(0xFFE1F5E8),
+                        child: Icon(
+                          Icons.mark_chat_unread_outlined,
+                          color: Colors.green.shade800,
+                        ),
+                      ),
+                      title: const Text(
+                        'Penagihan WhatsApp',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: const Text(
+                        'Tinjau tagihan dan setujui pesan pertama ke penyewa.',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const WhatsappBillingPage(),
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 14),
                   AppSearchField(
