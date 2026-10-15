@@ -43,7 +43,10 @@ extension on AppTone {
       case AppTone.danger:
         return (scheme.errorContainer.withValues(alpha: 0.7), scheme.onErrorContainer);
       case AppTone.info:
-        return (Colors.blue.shade100, Colors.blue.shade800);
+        return (
+          scheme.primaryContainer.withValues(alpha: 0.82),
+          scheme.primary,
+        );
       case AppTone.neutral:
         return (scheme.surfaceContainerHighest, scheme.onSurfaceVariant);
     }
