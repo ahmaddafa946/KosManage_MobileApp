@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.whatsapp_billing_outbox (
   property_id uuid NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
   owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   status text NOT NULL DEFAULT 'pending_approval'
-    CHECK (status IN ('pending_approval','sending','sent','failed','stopped','paid')),
+    CHECK (status IN ('pending_approval','sending','sent','failed','stopped','paid','uncertain')),
   approved_by uuid REFERENCES auth.users(id),
   approved_at timestamptz,
   first_sent_at timestamptz,
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS public.whatsapp_billing_inbound_events (
   from_phone text NOT NULL,
   message_type text NOT NULL DEFAULT 'unknown',
   status text NOT NULL DEFAULT 'received'
-    CHECK (status IN ('received', 'processing', 'processed', 'ignored', 'failed')),
+    CHECK (status IN ('received', 'processing', 'processed', 'ignored', 'failed', 'uncertain')),
   attempt_count integer NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
   processing_started_at timestamptz,
   received_at timestamptz NOT NULL DEFAULT now(),
