@@ -49,14 +49,24 @@ class _WhatsappBillingPageState extends ConsumerState<WhatsappBillingPage> {
       _success = null;
     });
     try {
-      await Supabase.instance.client.functions.invoke(
+      final response = await Supabase.instance.client.functions.invoke(
         'whatsapp-billing',
         body: {'action': 'approve-invoice', 'invoice_id': payment.id},
       );
       if (!mounted) return;
+      final responseData = response.data;
+      if (responseData is Map && responseData['status'] == 'uncertain') {
+        setState(() {
+          _error = responseData['message'] is String
+              ? responseData['message'] as String
+              : 'Status pengiriman belum dapat dipastikan. Periksa riwayat Meta sebelum mencoba lagi.';
+        });
+        return;
+      }
       setState(() {
-        _success = 'Permintaan pengiriman berhasil diproses untuk tagihan '
-            '${payment.invoiceNumber ?? payment.billingPeriod}.';
+        _success = 'Pesan penagihan telah diterima API WhatsApp untuk diproses '
+            'pada tagihan ${payment.invoiceNumber ?? payment.billingPeriod}. '
+            'Status terkirim dapat diperiksa melalui webhook.';
       });
     } on FunctionException catch (error) {
       if (!mounted) return;
