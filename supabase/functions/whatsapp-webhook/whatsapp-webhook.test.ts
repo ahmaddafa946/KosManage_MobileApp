@@ -1,5 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
+  constantTimeEqual,
   normalizePhone,
   parseIncomingAction,
   verifyMetaSignature,
@@ -50,4 +51,8 @@ Deno.test("accepts only known interactive action ids with UUID invoice ids", () 
   assertEquals(parseIncomingAction("bank:mandiri:" + id), { kind: "bank", bank: "mandiri", invoiceId: id });
   assertEquals(parseIncomingAction("pay:admin:" + id), { kind: "help" });
   assertEquals(parseIncomingAction("invoice:not-a-uuid"), { kind: "help" });
+});
+
+Deno.test("rejects oversized webhook verification tokens without comparing them", () => {
+  assertEquals(constantTimeEqual("x".repeat(513), "x".repeat(513)), false);
 });
