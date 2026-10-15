@@ -31,6 +31,21 @@ function rupiah(value: number): string {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
 
+async function notifyOwnerUncertain(
+  admin: ReturnType<typeof createAdminClient>,
+  row: { id: string; payment_id: string; owner_id: string },
+  detail: string,
+) {
+  const { error } = await admin.from("notifications").insert({
+    profile_id: row.owner_id,
+    title: "Status pengiriman WhatsApp belum pasti",
+    message: `Pengiriman WhatsApp untuk tagihan ${row.payment_id} belum dapat dipastikan. ${detail} Periksa riwayat pesan Meta sebelum mengirim ulang.`,
+    type: "whatsapp_delivery_uncertain",
+    data: { payment_id: row.payment_id, whatsapp_outbox_id: row.id },
+  });
+  if (error) console.error("Could not notify owner about uncertain WhatsApp delivery.", error);
+}
+
 async function sendTemplate(to: string, invoice: Invoice, tenant: Tenant): Promise<string> {
   const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
   const phoneId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
@@ -118,7 +133,7 @@ Deno.serve(async (req: Request) => {
 
       // An interrupted send may already have reached Meta. Mark it uncertain rather
       // than resending automatically and risking a duplicate bill/reminder.
-      const { error: recoverError } = await admin.from("whatsapp_billing_outbox")
+      const { data: uncertainRows, error: recoverError } = await admin.from("whatsapp_billing_outbox")
         .update({
           status: "uncertain",
           next_reminder_at: null,
@@ -126,8 +141,16 @@ Deno.serve(async (req: Request) => {
           last_error: "Send interrupted; verify Meta message history before retrying.",
         })
         .eq("status", "sending")
-        .lt("updated_at", staleCutoff);
+        .lt("updated_at", staleCutoff)
+        .select("id,payment_id,owner_id");
       if (recoverError) throw recoverError;
+      for (const uncertainRow of uncertainRows ?? []) {
+        await notifyOwnerUncertain(
+          admin,
+          uncertainRow,
+          "Worker pengingat terhenti ketika hasil pengiriman masih belum diketahui.",
+        );
+      }
 
       const { data: due, error } = await admin.from("whatsapp_billing_outbox")
         .select("id,payment_id,tenant_id,property_id,owner_id,reminder_count")
@@ -220,6 +243,11 @@ Deno.serve(async (req: Request) => {
               last_error: "Meta accepted the send but outbox update was not confirmed; reconcile manually.",
               updated_at: new Date().toISOString(),
             }).eq("id", row.id).eq("status", "sending");
+            await notifyOwnerUncertain(
+              admin,
+              row,
+              "Meta menerima permintaan pengiriman, tetapi pencatatan status di database belum terkonfirmasi.",
+            );
           }
           sent++;
         } catch (err) {
@@ -230,6 +258,7 @@ Deno.serve(async (req: Request) => {
               updated_at: new Date().toISOString(),
               last_error: err.message,
             }).eq("id", row.id).eq("status", "sending");
+            await notifyOwnerUncertain(admin, row, err.message);
           } else {
             await scheduleRetry(err instanceof Error ? err.message : "WhatsApp send failed; retry scheduled.");
           }
