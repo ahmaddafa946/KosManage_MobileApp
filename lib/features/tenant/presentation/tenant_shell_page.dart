@@ -13,6 +13,7 @@ import '../../shared/presentation/app_ui.dart';
 import '../application/tenant_payment_providers.dart';
 import '../../../domain/services/payment_transaction_status.dart';
 import 'payment_flow.dart';
+import 'whatsapp_billing_consent_card.dart';
 
 final tenantRepositoryProvider = Provider<TenantRepository>((ref) {
   return SupabaseTenantRepository(Supabase.instance.client);
@@ -338,6 +339,8 @@ class _TenantHomeContent extends ConsumerWidget {
                   _TenantReportSummary(reportsAsync: reportsAsync),
                   const SizedBox(height: 12),
                   _TenantRecentPayments(myTenant: myTenant),
+                  const SizedBox(height: 12),
+                  const WhatsappBillingConsentCard(),
                 ],
               );
             },
