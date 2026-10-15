@@ -51,6 +51,7 @@ export function parseIncomingAction(value: string): IncomingAction {
 }
 
 export function constantTimeEqual(left: string, right: string): boolean {
+  if (left.length > 512 || right.length > 512) return false;
   const a = new TextEncoder().encode(left);
   const b = new TextEncoder().encode(right);
   let difference = a.length ^ b.length;
