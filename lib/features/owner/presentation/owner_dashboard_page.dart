@@ -36,7 +36,11 @@ class OwnerDashboardPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
             // Property Header Card
-            _HeaderCard(propertyName: data.propertyName),
+            _HeaderCard(
+              propertyName: data.propertyName,
+              totalRooms: data.totalRooms,
+              occupiedRooms: data.occupiedRooms,
+            ),
             const SizedBox(height: 16),
 
             // Quick Actions
@@ -107,94 +111,124 @@ class OwnerDashboardPage extends ConsumerWidget {
 }
 
 class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({required this.propertyName});
+  const _HeaderCard({
+    required this.propertyName,
+    required this.totalRooms,
+    required this.occupiedRooms,
+  });
+
   final String propertyName;
+  final int totalRooms;
+  final int occupiedRooms;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final occupancy = totalRooms == 0
+        ? 0.0
+        : (occupiedRooms / totalRooms).clamp(0.0, 1.0);
+    final percentage = (occupancy * 100).round();
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.primaryContainer.withValues(alpha: 0.7),
-            colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary,
-                  borderRadius: BorderRadius.circular(6),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        color: const Color(0xFF171717),
+        padding: const EdgeInsets.all(20),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -70,
+              top: -86,
+              child: Transform.rotate(
+                angle: 0.18,
+                child: Container(
+                  width: 176,
+                  height: 210,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color(0xFFE71946).withValues(alpha: 0.30),
+                      width: 23,
+                    ),
+                    borderRadius: BorderRadius.circular(46),
+                  ),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Okupansi $propertyName',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.68),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Icon(Icons.apartment_rounded, size: 14, color: Colors.white),
-                    SizedBox(width: 4),
                     Text(
-                      'PROPERTI',
-                      style: TextStyle(
+                      '$occupiedRooms',
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
+                        fontSize: 38,
+                        height: 1,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.8,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Text(
+                        '/ $totalRooms kamar',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.66),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE71946),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        '$percentage% terisi',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const Spacer(),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF10B981),
-                  shape: BoxShape.circle,
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: occupancy,
+                    minHeight: 8,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFE71946),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Terhubung',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            propertyName,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
+              ],
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Kelola hunian secara terpusat dan efisien.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
