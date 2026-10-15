@@ -89,7 +89,7 @@ class _WhatsappBillingPageState extends ConsumerState<WhatsappBillingPage> {
       ),
       body: propertyAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => const Center(
+        error: (_, _) => const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
             child: Text('Data properti tidak dapat dimuat. Silakan coba lagi.'),
