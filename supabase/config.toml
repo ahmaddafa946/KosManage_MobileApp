@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.whatsapp-billing-consent]
 verify_jwt = true
+
+[functions.whatsapp-webhook]
+verify_jwt = false
