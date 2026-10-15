@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
     if (!body.opt_in) {
       const { error: stopError } = await admin.from("whatsapp_billing_outbox")
         .update({ status: "stopped", next_reminder_at: null, updated_at: timestamp, last_error: "Tenant opted out." })
-        .eq("tenant_id", tenant.id).in("status", ["pending_approval", "sent", "failed"]);
+        .eq("tenant_id", tenant.id).in("status", ["pending_approval", "sending", "sent", "failed"]);
       if (stopError) throw stopError;
     }
     return jsonResponse({ consent: tenant.whatsapp_billing_opt_in, updated_at: timestamp });
