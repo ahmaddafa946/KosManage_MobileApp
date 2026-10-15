@@ -30,7 +30,7 @@ async function sendTemplate(to: string, invoice: Invoice, tenant: Tenant): Promi
   const version = Deno.env.get("WHATSAPP_API_VERSION");
   const templateName = Deno.env.get("WHATSAPP_BILLING_TEMPLATE_NAME");
   const language = Deno.env.get("WHATSAPP_TEMPLATE_LANGUAGE") ?? "id";
-  if (!token || !phoneId || !version || !templateName) {
+  if (!token || !phoneId || !version || !/^v\\d+\\.\\d+$/.test(version) || !templateName) {
     throw new Error("WhatsApp configuration is incomplete.");
   }
   const recipient = normalizePhone(to);
@@ -61,6 +61,7 @@ async function sendTemplate(to: string, invoice: Invoice, tenant: Tenant): Promi
   const response = await fetch(`https://graph.facebook.com/${version}/${phoneId}/messages`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    signal: AbortSignal.timeout(15_000),
     body: JSON.stringify(body),
   });
   const result = await response.json().catch(() => ({}));
