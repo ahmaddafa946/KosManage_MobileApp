@@ -25,10 +25,12 @@ class _WhatsappBillingConsentCardState
   Future<void> _loadConsent() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      if (mounted) setState(() {
-        _loading = false;
-        _error = 'Silakan masuk kembali untuk mengatur persetujuan.';
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Silakan masuk kembali untuk mengatur persetujuan.';
+        });
+      }
       return;
     }
     try {
