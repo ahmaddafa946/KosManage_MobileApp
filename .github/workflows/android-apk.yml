@@ -48,6 +48,18 @@ jobs:
       - name: Generate Android platform files
         run: flutter create --platforms=android --org id.kosmanage .
 
+      - name: Ensure Internet permission in release manifest
+        shell: bash
+        run: |
+          manifest="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q 'android.permission.INTERNET' "$manifest"; then
+            sed -i '/<manifest /a\    <uses-permission android:name="android.permission.INTERNET" />' "$manifest"
+          fi
+          if ! grep -q 'android.permission.INTERNET' "$manifest"; then
+            echo "::error::Izin INTERNET tidak ditemukan pada AndroidManifest.xml"
+            exit 1
+          fi
+
       - name: Install dependencies
         run: flutter pub get
 
