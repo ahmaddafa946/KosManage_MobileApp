@@ -517,7 +517,7 @@ async function createGatewayRequest(
       customerDetails: {
         firstName: tenant.name ?? "Tenant",
         email: tenant.email ?? "tenant@kosmanage.app",
-        phone: tenant.phone,
+        phone: tenant.phone ?? undefined,
       },
       itemDetails: [{
         id: invoice.room_id ?? invoice.id,
