@@ -50,7 +50,7 @@ export function parseIncomingAction(value: string): IncomingAction {
   return { kind: "help" };
 }
 
-function constantTimeEqual(left: string, right: string): boolean {
+export function constantTimeEqual(left: string, right: string): boolean {
   const a = new TextEncoder().encode(left);
   const b = new TextEncoder().encode(right);
   let difference = a.length ^ b.length;
