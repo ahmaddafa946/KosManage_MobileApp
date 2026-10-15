@@ -87,3 +87,10 @@ export async function verifyMetaSignature(
 export function isUuid(value: string): boolean {
   return UUID_PATTERN.test(value);
 }
+
+export class MetaSendOutcomeError extends Error {
+  constructor(message: string, readonly outcome: "rejected" | "unknown") {
+    super(message);
+    this.name = "MetaSendOutcomeError";
+  }
+}
