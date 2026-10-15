@@ -1,6 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createAdminClient, getAuthenticatedUser } from "../_shared/supabase-admin.ts";
 import { corsPreflightResponse, errorResponse, jsonResponse } from "../_shared/response-helper.ts";
+import {
+  MAX_REMINDERS,
+  nextReminderAt,
+  normalizePhone,
+  outstandingAmount,
+  retryAt,
+} from "./reminder-logic.ts";
 
 type Invoice = {
   id: string; tenant_id: string; property_id: string; billing_period: string;
@@ -9,18 +16,14 @@ type Invoice = {
 };
 type Tenant = {
   id: string; name: string | null; phone: string | null; profile_id: string | null;
+  property_id?: string;
   whatsapp_billing_opt_in: boolean;
 };
-
-const jsonHeaders = { "content-type": "application/json; charset=utf-8" };
 
 function rupiah(value: number): string {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
-function normalizePhone(value: string): string | null {
-  const digits = value.replace(/[^0-9]/g, "").replace(/^0/, "62");
-  return digits.length >= 10 && digits.length <= 15 ? digits : null;
-}
+
 async function sendTemplate(to: string, invoice: Invoice, tenant: Tenant): Promise<string> {
   const token = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
   const phoneId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
@@ -49,7 +52,7 @@ async function sendTemplate(to: string, invoice: Invoice, tenant: Tenant): Promi
         parameters: [
           { type: "text", text: tenant.name?.trim() || "Penghuni" },
           { type: "text", text: invoice.invoice_number || invoice.billing_period },
-          { type: "text", text: rupiah(Math.max(0, Number(invoice.amount_due) - Number(invoice.amount_paid))) },
+          { type: "text", text: rupiah(outstandingAmount(invoice.amount_due, invoice.amount_paid)) },
           { type: "text", text: dueDate },
         ],
       }],
@@ -85,40 +88,108 @@ Deno.serve(async (req: Request) => {
       }
 
       const now = new Date().toISOString();
+      const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+      // Recover claims left behind by a crashed reminder invocation. Initial approvals
+      // have first_sent_at = NULL and are intentionally not recovered by this path.
+      const { error: recoverError } = await admin.from("whatsapp_billing_outbox")
+        .update({
+          status: "sent",
+          next_reminder_at: now,
+          updated_at: now,
+          last_error: "Recovered an interrupted reminder attempt.",
+        })
+        .eq("status", "sending")
+        .not("first_sent_at", "is", null)
+        .lt("updated_at", staleCutoff);
+      if (recoverError) throw recoverError;
+
       const { data: due, error } = await admin.from("whatsapp_billing_outbox")
         .select("id,payment_id,tenant_id,property_id,owner_id,reminder_count")
-        .eq("status", "sent").lte("next_reminder_at", now).lt("reminder_count", 3)
+        .eq("status", "sent").lte("next_reminder_at", now).lt("reminder_count", MAX_REMINDERS)
         .order("next_reminder_at", { ascending: true }).limit(50);
       if (error) throw error;
 
       let sent = 0;
       for (const row of due ?? []) {
-        const { data: invoice } = await admin.from("payments")
+        // Compare-and-set claim: only one concurrent scheduler can move a due row
+        // from sent to sending. A second worker sees no returned row and skips it.
+        const claimTime = new Date().toISOString();
+        const { data: claimed, error: claimError } = await admin.from("whatsapp_billing_outbox")
+          .update({ status: "sending", updated_at: claimTime })
+          .eq("id", row.id)
+          .eq("status", "sent")
+          .eq("reminder_count", row.reminder_count)
+          .lte("next_reminder_at", now)
+          .select("id")
+          .maybeSingle();
+        if (claimError) {
+          console.error("Could not claim WhatsApp reminder", claimError);
+          continue;
+        }
+        if (!claimed) continue;
+
+        const scheduleRetry = async (message: string) => {
+          const retryTime = new Date();
+          await admin.from("whatsapp_billing_outbox").update({
+            status: "sent",
+            next_reminder_at: retryAt(retryTime),
+            updated_at: retryTime.toISOString(),
+            last_error: message,
+          }).eq("id", row.id).eq("status", "sending");
+        };
+
+        const { data: invoice, error: invoiceError } = await admin.from("payments")
           .select("id,tenant_id,property_id,billing_period,invoice_number,due_date,amount_due,amount_paid,status")
           .eq("id", row.payment_id).maybeSingle();
+        if (invoiceError) {
+          await scheduleRetry("Could not load invoice; retry scheduled.");
+          continue;
+        }
         if (!invoice || ["paid", "cancelled", "expired"].includes(invoice.status) ||
-            Number(invoice.amount_due) <= Number(invoice.amount_paid)) {
-          await admin.from("whatsapp_billing_outbox").update({ status: invoice?.status === "paid" ? "paid" : "stopped", next_reminder_at: null, updated_at: now }).eq("id", row.id);
+            outstandingAmount(Number(invoice.amount_due), Number(invoice.amount_paid)) <= 0) {
+          await admin.from("whatsapp_billing_outbox").update({
+            status: invoice?.status === "paid" ? "paid" : "stopped",
+            next_reminder_at: null,
+            updated_at: new Date().toISOString(),
+          }).eq("id", row.id).eq("status", "sending");
           continue;
         }
-        const { data: tenant } = await admin.from("tenants")
-          .select("id,name,phone,profile_id,whatsapp_billing_opt_in")
+
+        const { data: tenant, error: tenantError } = await admin.from("tenants")
+          .select("id,name,phone,profile_id,property_id,whatsapp_billing_opt_in")
           .eq("id", row.tenant_id).maybeSingle();
-        if (!tenant?.whatsapp_billing_opt_in || !tenant.phone) {
-          await admin.from("whatsapp_billing_outbox").update({ status: "stopped", next_reminder_at: null, updated_at: now, last_error: "Tenant consent or phone number missing." }).eq("id", row.id);
+        if (tenantError) {
+          await scheduleRetry("Could not load tenant; retry scheduled.");
           continue;
         }
+        if (!tenant?.whatsapp_billing_opt_in || !tenant.phone || tenant.property_id !== invoice.property_id) {
+          await admin.from("whatsapp_billing_outbox").update({
+            status: "stopped",
+            next_reminder_at: null,
+            updated_at: new Date().toISOString(),
+            last_error: "Tenant consent, phone number, or property link is invalid.",
+          }).eq("id", row.id).eq("status", "sending");
+          continue;
+        }
+
         try {
           const messageId = await sendTemplate(tenant.phone, invoice as Invoice, tenant as Tenant);
-          const count = Number(row.reminder_count) + 1;
-          await admin.from("whatsapp_billing_outbox").update({
-            reminder_count: count, last_sent_at: now, last_message_id: messageId,
-            next_reminder_at: count >= 3 ? null : new Date(Date.now() + 3 * 86400000).toISOString(),
-            updated_at: now, last_error: null,
-          }).eq("id", row.id).eq("status", "sent");
+          const reminderCount = Number(row.reminder_count) + 1;
+          const sentAt = new Date();
+          const { error: finishError } = await admin.from("whatsapp_billing_outbox").update({
+            status: "sent",
+            reminder_count: reminderCount,
+            last_sent_at: sentAt.toISOString(),
+            last_message_id: messageId,
+            next_reminder_at: nextReminderAt(sentAt, reminderCount),
+            updated_at: sentAt.toISOString(),
+            last_error: null,
+          }).eq("id", row.id).eq("status", "sending");
+          if (finishError) console.error("Reminder was sent but outbox update failed", finishError);
           sent++;
         } catch (err) {
-          await admin.from("whatsapp_billing_outbox").update({ last_error: err instanceof Error ? err.message : "Send failed", updated_at: now }).eq("id", row.id);
+          await scheduleRetry(err instanceof Error ? err.message : "WhatsApp send failed; retry scheduled.");
         }
       }
       return jsonResponse({ processed: due?.length ?? 0, sent });
@@ -135,17 +206,20 @@ Deno.serve(async (req: Request) => {
       .eq("id", invoiceId).maybeSingle();
     if (invoiceError || !invoice) return errorResponse("Tagihan tidak ditemukan.", 404, "NOT_FOUND");
     if (["paid", "cancelled", "expired"].includes(invoice.status) ||
-        Number(invoice.amount_due) <= Number(invoice.amount_paid)) {
+        outstandingAmount(Number(invoice.amount_due), Number(invoice.amount_paid)) <= 0) {
       return errorResponse("Tagihan tidak aktif atau sudah lunas.", 409, "INVOICE_CLOSED");
     }
 
     const { data: property } = await admin.from("properties").select("owner_id").eq("id", invoice.property_id).maybeSingle();
     if (!property || property.owner_id !== user.id) return errorResponse("Forbidden.", 403, "FORBIDDEN");
 
-    const { data: tenant } = await admin.from("tenants")
-      .select("id,name,phone,profile_id,whatsapp_billing_opt_in")
+    const { data: tenant, error: tenantError } = await admin.from("tenants")
+      .select("id,name,phone,profile_id,property_id,whatsapp_billing_opt_in")
       .eq("id", invoice.tenant_id).maybeSingle();
-    if (!tenant?.whatsapp_billing_opt_in) return errorResponse("Penyewa belum memberikan persetujuan menerima pengingat WhatsApp.", 409, "CONSENT_REQUIRED");
+    if (tenantError || !tenant || tenant.property_id !== invoice.property_id) {
+      return errorResponse("Data penyewa dan properti tidak cocok.", 409, "TENANT_PROPERTY_MISMATCH");
+    }
+    if (!tenant.whatsapp_billing_opt_in) return errorResponse("Penyewa belum memberikan persetujuan menerima pengingat WhatsApp.", 409, "CONSENT_REQUIRED");
     if (!tenant.phone) return errorResponse("Nomor WhatsApp penyewa belum tersedia.", 409, "PHONE_REQUIRED");
 
     const { data: existing, error: existingError } = await admin.from("whatsapp_billing_outbox")
@@ -170,18 +244,33 @@ Deno.serve(async (req: Request) => {
       queueId = inserted.id;
     }
 
+    // Re-check consent and tenant/property relationship immediately before calling Meta.
+    const { data: consentCheck, error: consentError } = await admin.from("tenants")
+      .select("whatsapp_billing_opt_in,phone,property_id")
+      .eq("id", invoice.tenant_id).maybeSingle();
+    if (consentError || !consentCheck?.whatsapp_billing_opt_in || !consentCheck.phone ||
+        consentCheck.property_id !== invoice.property_id) {
+      await admin.from("whatsapp_billing_outbox").update({
+        status: "stopped", next_reminder_at: null, last_error: "Consent or tenant details changed before send.",
+        updated_at: new Date().toISOString(),
+      }).eq("id", queueId).eq("status", "sending");
+      return errorResponse("Persetujuan atau data WhatsApp penyewa berubah. Pesan tidak dikirim.", 409, "CONSENT_CHANGED");
+    }
+
     try {
-      const messageId = await sendTemplate(tenant.phone, invoice as Invoice, tenant as Tenant);
+      const messageId = await sendTemplate(consentCheck.phone, invoice as Invoice, { ...tenant, phone: consentCheck.phone } as Tenant);
+      const sentAt = new Date();
       const { error: finishError } = await admin.from("whatsapp_billing_outbox").update({
-        status: "sent", first_sent_at: timestamp, last_sent_at: timestamp, next_reminder_at: new Date(Date.now() + 3 * 86400000).toISOString(),
-        last_message_id: messageId, last_error: null, updated_at: new Date().toISOString(),
+        status: "sent", first_sent_at: sentAt.toISOString(), last_sent_at: sentAt.toISOString(),
+        next_reminder_at: nextReminderAt(sentAt, 0), last_message_id: messageId, last_error: null,
+        updated_at: sentAt.toISOString(),
       }).eq("id", queueId).eq("status", "sending");
       if (finishError) throw finishError;
       return jsonResponse({ status: "sent", queue_id: queueId, message_id: messageId }, 200);
     } catch (err) {
       await admin.from("whatsapp_billing_outbox").update({
         status: "failed", last_error: err instanceof Error ? err.message : "Send failed", updated_at: new Date().toISOString(),
-      }).eq("id", queueId);
+      }).eq("id", queueId).eq("status", "sending");
       throw err;
     }
   } catch (err) {
