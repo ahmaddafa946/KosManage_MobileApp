@@ -44,7 +44,7 @@ Scheduled reminder (trusted scheduler only):
 ```json
 { "action": "run-reminders" }
 ```
-Call with `Authorization: Bearer <WHATSAPP_REMINDER_CRON_SECRET>`. Schedule it daily; it sends only when `next_reminder_at` is due, stops after three reminders, and stops reminders for paid/closed invoices or withdrawn consent.
+Call with `Authorization: Bearer <WHATSAPP_REMINDER_CRON_SECRET>`. Schedule it daily; it sends only when `next_reminder_at` is due, stops after three successful reminders, and stops reminders for paid/closed invoices or withdrawn consent. Due rows are claimed with a conditional database update so concurrent scheduler runs do not normally send the same reminder twice. Failed sends/read operations are retried after 24 hours without incrementing the successful reminder count. Stale reminder claims older than 15 minutes are recovered after an interrupted run.
 
 ## Important limitations before production
 
