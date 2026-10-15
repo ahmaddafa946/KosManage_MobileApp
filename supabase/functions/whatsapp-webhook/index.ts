@@ -689,8 +689,11 @@ async function claimInboundEvent(
   if (!row) return null;
 
   const status = row.status as string;
-  if (status === "processed" || status === "ignored") return null;
-  if (status === "processing" && row.processing_started_at && row.processing_started_at >= staleCutoff) return null;
+  if (status === "processed" || status === "ignored" || status === "uncertain") return null;
+  const processingStartedAt = row.processing_started_at
+    ? new Date(row.processing_started_at).getTime()
+    : 0;
+  if (status === "processing" && processingStartedAt >= now.getTime() - 15 * 60_000) return null;
   if (!["received", "failed", "processing"].includes(status)) return null;
 
   let query = admin.from("whatsapp_billing_inbound_events").update({
