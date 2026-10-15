@@ -42,7 +42,7 @@ Penyewa yang mengirim pesan ke nomor WhatsApp bisnis dapat memakai:
 - `STOP`: mencabut persetujuan pengingat dan menghentikan pengingat yang masih antre. `START` tidak otomatis memberi persetujuan; persetujuan reminder dikelola dari aplikasi.
 - Perintah yang tidak dikenal membalas menu bantuan; webhook mengabaikan nomor yang tidak cocok atau cocok dengan lebih dari satu tenant untuk mencegah kebocoran data.
 
-Balasan interaktif hanya diproses dari pesan masuk yang telah diverifikasi lewat signature Meta. ID pesan masuk disimpan dengan constraint unique dan klaim pemrosesan untuk menahan pengiriman balasan duplikat ketika Meta mengulangi webhook. Status pengiriman `sent`, `delivered`, `read`, dan `failed` dicatat pada outbox bila cocok dengan message ID terakhir.
+Balasan interaktif hanya diproses dari pesan masuk yang telah diverifikasi lewat signature Meta. ID pesan masuk disimpan dengan constraint unique dan klaim pemrosesan untuk menahan balasan duplikat ketika Meta mengulangi webhook. Hasil pengiriman outbound yang tidak pasti diparkir sebagai `uncertain` dan tidak diproses ulang otomatis. Status pengiriman `sent`, `delivered`, `read`, dan `failed` dicatat pada outbox bila cocok dengan message ID terakhir.
 
 ## Payment flow
 
@@ -67,7 +67,7 @@ Pemanggilan scheduler tepercaya:
 { "action": "run-reminders" }
 ```
 
-Scheduler mengirim paling banyak tiga reminder yang berhasil, berjarak tiga hari. Claim memakai conditional database update untuk mengurangi duplikasi scheduler paralel. Kegagalan pengiriman/pembacaan dijadwalkan ulang setelah 24 jam, tanpa menaikkan counter reminder berhasil. Klaim scheduler yang macet lebih dari 15 menit dipulihkan. Pesan awal dihitung terpisah dari tiga reminder itu.
+Scheduler mengirim paling banyak tiga reminder yang berhasil, berjarak tiga hari. Claim memakai conditional database update untuk mengurangi duplikasi scheduler paralel. Kegagalan yang jelas ditolak Meta atau kegagalan baca database dijadwalkan ulang setelah 24 jam, tanpa menaikkan counter reminder berhasil. Bila koneksi terputus setelah permintaan mungkin diterima Meta, atau worker macet lebih dari 15 menit, status berubah menjadi `uncertain` dan pengiriman otomatis dihentikan agar pesan tidak terkirim dua kali. Owner harus memeriksa riwayat Meta sebelum tindakan manual. Pesan awal dihitung terpisah dari tiga reminder itu.
 
 Persetujuan tenant (pakai JWT tenant):
 
