@@ -41,6 +41,7 @@ type IncomingMessage = {
   from?: string;
   type?: string;
   text?: { body?: string };
+  button?: { payload?: string; text?: string };
   interactive?: {
     button_reply?: { id?: string; title?: string };
     list_reply?: { id?: string; title?: string };
@@ -58,7 +59,6 @@ type Transaction = {
   bank?: string | null;
   expires_at?: string | null;
 };
-type PaymentMethod = "qris" | "bank_transfer" | "cash";
 const ACTIVE_TRANSACTION_STATUSES = ["created", "pending", "waiting_confirmation"];
 const BANK_LABELS: Record<string, string> = {
   bca: "BCA",
@@ -89,6 +89,17 @@ function formatDueDate(value: string | null): string {
   }).format(date);
 }
 
+function formatExpiry(value: string | null | undefined): string {
+  if (!value) return "lihat aplikasi KosManage";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "lihat aplikasi KosManage";
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(date) + " WIB";
+}
+
 function isInvoiceOpen(invoice: Invoice): boolean {
   return !["paid", "cancelled", "expired"].includes(invoice.status) &&
     outstanding(invoice) > 0;
@@ -116,6 +127,7 @@ async function sendMetaMessage(to: string, message: Record<string, unknown>) {
         authorization: `Bearer ${token}`,
         "content-type": "application/json",
       },
+      signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({
         messaging_product: "whatsapp",
         recipient_type: "individual",
@@ -446,6 +458,14 @@ async function createGatewayRequest(
     return;
   }
 
+  let roomNumber = "Kos";
+  if (invoice.room_id) {
+    const { data: room, error: roomError } = await admin.from("rooms")
+      .select("room_number").eq("id", invoice.room_id).maybeSingle();
+    if (roomError) throw roomError;
+    if (room) roomNumber = `Kamar ${room.room_number}`;
+  }
+
   const orderId = `KM-${invoice.id.substring(0, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
   const { data: reservation, error: reserveError } = await admin.from("payment_transactions").insert({
     payment_id: invoice.id,
@@ -466,14 +486,6 @@ async function createGatewayRequest(
       return;
     }
     throw reserveError;
-  }
-
-  let roomNumber = "Kos";
-  if (invoice.room_id) {
-    const { data: room, error: roomError } = await admin.from("rooms")
-      .select("room_number").eq("id", invoice.room_id).maybeSingle();
-    if (roomError) throw roomError;
-    if (room) roomNumber = `Kamar ${room.room_number}`;
   }
 
   const gateway = getPaymentGateway();
@@ -570,7 +582,7 @@ async function createGatewayRequest(
   const selectedBank = typeof result.bank === "string" ? result.bank : bank ?? "";
   await sendText(
     phone,
-    `Instruksi transfer untuk ${invoice.invoice_number || invoice.billing_period}\nBank: ${BANK_LABELS[selectedBank] ?? selectedBank}\nNomor VA: ${va || "lihat aplikasi KosManage"}\nNominal: ${formatRupiah(netDue)}\nBerlaku sampai: ${typeof result.expires_at === "string" ? formatDueDate(result.expires_at.slice(0, 10)) + " " + result.expires_at.slice(11, 16) : "lihat aplikasi KosManage"} WIB\n\nPembayaran diverifikasi otomatis melalui Midtrans. Jangan bagikan nomor transaksi kepada pihak yang tidak dikenal.`,
+`Instruksi transfer untuk ${invoice.invoice_number || invoice.billing_period}\nBank: ${BANK_LABELS[selectedBank] ?? selectedBank}\nNomor VA: ${va || "lihat aplikasi KosManage"}\nNominal: ${formatRupiah(netDue)}\nBerlaku sampai: ${formatExpiry(typeof result.expires_at === "string" ? result.expires_at : null)}\n\nPembayaran diverifikasi otomatis melalui Midtrans. Jangan bagikan nomor transaksi kepada pihak yang tidak dikenal.`,
     replyTo,
   );
 }
@@ -697,6 +709,8 @@ async function handleInboundMessage(
     } else if (message.type === "interactive") {
       actionValue = message.interactive?.button_reply?.id ??
         message.interactive?.list_reply?.id ?? "";
+    } else if (message.type === "button") {
+      actionValue = message.button?.payload ?? message.button?.text ?? "";
     } else {
       await admin.from("whatsapp_billing_inbound_events").update({
         status: "ignored", processing_started_at: null, processed_at: new Date().toISOString(),
