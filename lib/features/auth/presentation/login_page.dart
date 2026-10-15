@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../home/presentation/home_gate_page.dart';
 import '../application/auth_controller.dart';
+import 'demo_credentials.dart';
 import 'login_role.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -81,9 +82,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _useDemoAccount() {
-    setState(() => _selectedRole = 'owner');
-    _emailController.text = 'owner@kosmanage.dev';
-    _passwordController.text = 'KosManage!dev1';
+    final credentials = demoCredentialsForRole(_selectedRole);
+    setState(() {
+      _emailController.text = credentials.email;
+      _passwordController.text = credentials.password;
+    });
   }
 
   String _loginErrorMessage(Object error) {
