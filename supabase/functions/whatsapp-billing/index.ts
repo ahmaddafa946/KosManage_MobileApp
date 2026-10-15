@@ -20,6 +20,13 @@ type Tenant = {
   whatsapp_billing_opt_in: boolean;
 };
 
+class WhatsAppSendError extends Error {
+  constructor(message: string, readonly outcome: "rejected" | "unknown") {
+    super(message);
+    this.name = "WhatsAppSendError";
+  }
+}
+
 function rupiah(value: number): string {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
 }
@@ -58,18 +65,36 @@ async function sendTemplate(to: string, invoice: Invoice, tenant: Tenant): Promi
       }],
     },
   };
-  const response = await fetch(`https://graph.facebook.com/${version}/${phoneId}/messages`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    signal: AbortSignal.timeout(15_000),
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`https://graph.facebook.com/${version}/${phoneId}/messages`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new WhatsAppSendError(
+      "Hasil pengiriman ke Meta belum dapat dipastikan karena koneksi terputus. Jangan kirim ulang sebelum memeriksa riwayat Meta.",
+      "unknown",
+    );
+  }
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error("WhatsApp Cloud API rejected message", response.status, JSON.stringify(result).slice(0, 1000));
-    throw new Error("WhatsApp gagal mengirim pesan. Periksa template dan konfigurasi WhatsApp Business.");
+    throw new WhatsAppSendError(
+      "WhatsApp menolak pengiriman. Periksa template, izin, dan konfigurasi WhatsApp Business.",
+      response.status >= 500 ? "unknown" : "rejected",
+    );
   }
-  return result?.messages?.[0]?.id ?? "";
+  const messageId = result?.messages?.[0]?.id;
+  if (typeof messageId !== "string" || !messageId) {
+    throw new WhatsAppSendError(
+      "Meta menerima respons yang tidak lengkap; hasil pengiriman belum dapat dipastikan.",
+      "unknown",
+    );
+  }
+  return messageId;
 }
 
 Deno.serve(async (req: Request) => {
@@ -91,17 +116,16 @@ Deno.serve(async (req: Request) => {
       const now = new Date().toISOString();
       const staleCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
-      // Recover claims left behind by a crashed reminder invocation. Initial approvals
-      // have first_sent_at = NULL and are intentionally not recovered by this path.
+      // An interrupted send may already have reached Meta. Mark it uncertain rather
+      // than resending automatically and risking a duplicate bill/reminder.
       const { error: recoverError } = await admin.from("whatsapp_billing_outbox")
         .update({
-          status: "sent",
-          next_reminder_at: now,
+          status: "uncertain",
+          next_reminder_at: null,
           updated_at: now,
-          last_error: "Recovered an interrupted reminder attempt.",
+          last_error: "Send interrupted; verify Meta message history before retrying.",
         })
         .eq("status", "sending")
-        .not("first_sent_at", "is", null)
         .lt("updated_at", staleCutoff);
       if (recoverError) throw recoverError;
 
@@ -178,7 +202,7 @@ Deno.serve(async (req: Request) => {
           const messageId = await sendTemplate(tenant.phone, invoice as Invoice, tenant as Tenant);
           const reminderCount = Number(row.reminder_count) + 1;
           const sentAt = new Date();
-          const { error: finishError } = await admin.from("whatsapp_billing_outbox").update({
+          const { data: finished, error: finishError } = await admin.from("whatsapp_billing_outbox").update({
             status: "sent",
             reminder_count: reminderCount,
             last_sent_at: sentAt.toISOString(),
@@ -186,11 +210,29 @@ Deno.serve(async (req: Request) => {
             next_reminder_at: nextReminderAt(sentAt, reminderCount),
             updated_at: sentAt.toISOString(),
             last_error: null,
-          }).eq("id", row.id).eq("status", "sending");
-          if (finishError) console.error("Reminder was sent but outbox update failed", finishError);
+          }).eq("id", row.id).eq("status", "sending").select("id").maybeSingle();
+          if (finishError || !finished) {
+            console.error("Reminder was accepted by Meta but outbox state could not be confirmed.", finishError);
+            await admin.from("whatsapp_billing_outbox").update({
+              status: "uncertain",
+              next_reminder_at: null,
+              last_message_id: messageId,
+              last_error: "Meta accepted the send but outbox update was not confirmed; reconcile manually.",
+              updated_at: new Date().toISOString(),
+            }).eq("id", row.id).eq("status", "sending");
+          }
           sent++;
         } catch (err) {
-          await scheduleRetry(err instanceof Error ? err.message : "WhatsApp send failed; retry scheduled.");
+          if (err instanceof WhatsAppSendError && err.outcome === "unknown") {
+            await admin.from("whatsapp_billing_outbox").update({
+              status: "uncertain",
+              next_reminder_at: null,
+              updated_at: new Date().toISOString(),
+              last_error: err.message,
+            }).eq("id", row.id).eq("status", "sending");
+          } else {
+            await scheduleRetry(err instanceof Error ? err.message : "WhatsApp send failed; retry scheduled.");
+          }
         }
       }
       return jsonResponse({ processed: due?.length ?? 0, sent });
@@ -258,22 +300,50 @@ Deno.serve(async (req: Request) => {
       return errorResponse("Persetujuan atau data WhatsApp penyewa berubah. Pesan tidak dikirim.", 409, "CONSENT_CHANGED");
     }
 
+    let messageId: string;
     try {
-      const messageId = await sendTemplate(consentCheck.phone, invoice as Invoice, { ...tenant, phone: consentCheck.phone } as Tenant);
-      const sentAt = new Date();
-      const { error: finishError } = await admin.from("whatsapp_billing_outbox").update({
-        status: "sent", first_sent_at: sentAt.toISOString(), last_sent_at: sentAt.toISOString(),
-        next_reminder_at: nextReminderAt(sentAt, 0), last_message_id: messageId, last_error: null,
-        updated_at: sentAt.toISOString(),
-      }).eq("id", queueId).eq("status", "sending");
-      if (finishError) throw finishError;
-      return jsonResponse({ status: "sent", queue_id: queueId, message_id: messageId }, 200);
+      messageId = await sendTemplate(consentCheck.phone, invoice as Invoice, { ...tenant, phone: consentCheck.phone } as Tenant);
     } catch (err) {
+      const unknownOutcome = err instanceof WhatsAppSendError && err.outcome === "unknown";
+      const errorMessage = err instanceof Error ? err.message : "Send failed.";
       await admin.from("whatsapp_billing_outbox").update({
-        status: "failed", last_error: err instanceof Error ? err.message : "Send failed", updated_at: new Date().toISOString(),
+        status: unknownOutcome ? "uncertain" : "failed",
+        next_reminder_at: null,
+        last_error: errorMessage,
+        updated_at: new Date().toISOString(),
       }).eq("id", queueId).eq("status", "sending");
+      if (unknownOutcome) {
+        return jsonResponse({
+          status: "uncertain",
+          queue_id: queueId,
+          message: "Hasil pengiriman belum dapat dipastikan. Periksa riwayat pesan Meta sebelum mencoba lagi.",
+        }, 202);
+      }
       throw err;
     }
+
+    const sentAt = new Date();
+    const { data: finished, error: finishError } = await admin.from("whatsapp_billing_outbox").update({
+      status: "sent", first_sent_at: sentAt.toISOString(), last_sent_at: sentAt.toISOString(),
+      next_reminder_at: nextReminderAt(sentAt, 0), last_message_id: messageId, last_error: null,
+      updated_at: sentAt.toISOString(),
+    }).eq("id", queueId).eq("status", "sending").select("id").maybeSingle();
+    if (finishError || !finished) {
+      console.error("Meta accepted the initial billing message but outbox state could not be confirmed.", finishError);
+      await admin.from("whatsapp_billing_outbox").update({
+        status: "uncertain",
+        next_reminder_at: null,
+        last_message_id: messageId,
+        last_error: "Meta accepted the message but the outbox update was not confirmed; reconcile manually.",
+        updated_at: new Date().toISOString(),
+      }).eq("id", queueId).eq("status", "sending");
+      return jsonResponse({
+        status: "uncertain",
+        queue_id: queueId,
+        message: "Meta menerima permintaan pesan, tetapi status antrean belum terkonfirmasi. Jangan tekan kirim ulang sebelum memeriksa riwayat Meta.",
+      }, 202);
+    }
+    return jsonResponse({ status: "sent", queue_id: queueId, message_id: messageId }, 200);
   } catch (err) {
     console.error("whatsapp-billing error:", err);
     return errorResponse(err instanceof Error ? err.message : "Internal server error.", 500, "INTERNAL_ERROR");
