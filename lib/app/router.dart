@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/auth/role_guard.dart';
-import '../domain/models/app_role.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/registration_page.dart';
 import '../features/home/presentation/home_gate_page.dart';
