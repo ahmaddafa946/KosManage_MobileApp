@@ -50,7 +50,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ref.invalidate(currentProfileProvider);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(roleMessage),
             behavior: SnackBarBehavior.floating,
           ),
