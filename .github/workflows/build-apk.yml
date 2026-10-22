@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - feat/owner-only-auth-auto-refresh
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
