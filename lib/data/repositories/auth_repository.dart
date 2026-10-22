@@ -5,6 +5,12 @@ abstract interface class AuthRepository {
 
   Future<void> signIn({required String email, required String password});
 
+  Future<void> signUp({
+    required String fullName,
+    required String email,
+    required String password,
+  });
+
   Future<void> signOut();
 }
 
@@ -21,6 +27,19 @@ class SupabaseAuthRepository implements AuthRepository {
     await _client.auth.signInWithPassword(
       email: email.trim(),
       password: password,
+    );
+  }
+
+  @override
+  Future<void> signUp({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async {
+    await _client.auth.signUp(
+      email: email.trim(),
+      password: password,
+      data: {'full_name': fullName.trim()},
     );
   }
 
