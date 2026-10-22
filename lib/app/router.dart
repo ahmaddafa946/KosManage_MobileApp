@@ -72,21 +72,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!isAuthenticated && !isPublicAuthRoute) return '/login';
       if (isAuthenticated && isPublicAuthRoute) return '/home';
 
-      // This mobile client is intentionally restricted to owner accounts.
-      final profile = ref.read(currentProfileProvider).value;
-      if (state.matchedLocation != '/home' &&
-          (profile == null || profile.role != AppRole.owner)) {
-        return '/home';
-      }
+      // Do not apply profile/role redirects before authentication. In
+      // particular, a signed-out user must be allowed to stay on /login and
+      // /register; redirecting them to /home here creates /login <-> /home.
+      if (isAuthenticated) {
+        final profile = ref.read(currentProfileProvider).value;
 
-      // Role-aware redirect guard for any deep-linked owner prefix.
-      if (profile != null) {
-        final redirectTarget = RoleGuard.resolveRedirect(
-          role: profile.role,
-          requestedPath: state.matchedLocation,
-        );
-        if (redirectTarget != null && redirectTarget != state.matchedLocation) {
-          return redirectTarget;
+        // While the profile is loading, let /home render its loading state.
+        // Once loaded, HomeGatePage displays a clear notice for tenant users.
+        if (profile != null && state.matchedLocation != '/home') {
+          final redirectTarget = RoleGuard.resolveRedirect(
+            role: profile.role,
+            requestedPath: state.matchedLocation,
+          );
+          if (redirectTarget != null &&
+              redirectTarget != state.matchedLocation) {
+            return redirectTarget;
+          }
         }
       }
 
