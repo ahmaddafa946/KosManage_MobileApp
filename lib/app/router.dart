@@ -74,9 +74,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // This mobile client is intentionally restricted to owner accounts.
       final profile = ref.read(currentProfileProvider).value;
-      if (profile != null &&
-          profile.role != AppRole.owner &&
-          state.matchedLocation != '/home') {
+      if (state.matchedLocation != '/home' &&
+          (profile == null || profile.role != AppRole.owner)) {
         return '/home';
       }
 
