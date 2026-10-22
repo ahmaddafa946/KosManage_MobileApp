@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/auth/role_guard.dart';
 import '../features/auth/presentation/login_page.dart';
+import '../features/auth/presentation/registration_page.dart';
 import '../features/home/presentation/home_gate_page.dart';
 import '../features/settings/presentation/settings_page.dart';
 import '../features/tenant/presentation/payment_flow.dart';
@@ -38,6 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: refreshListenable,
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(path: '/register', builder: (context, state) => const RegistrationPage()),
       GoRoute(path: '/home', builder: (context, state) => const HomeGatePage()),
       GoRoute(
         path: '/settings',
@@ -71,10 +73,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuthenticated =
           Supabase.instance.client.auth.currentSession != null;
-      final isLogin = state.matchedLocation == '/login';
+      final isPublicAuthRoute =
+          state.matchedLocation == '/login' || state.matchedLocation == '/register';
 
-      if (!isAuthenticated && !isLogin) return '/login';
-      if (isAuthenticated && isLogin) return '/home';
+      if (!isAuthenticated && !isPublicAuthRoute) return '/login';
+      if (isAuthenticated && isPublicAuthRoute) return '/home';
 
       // ponytail: role-aware redirect guard for any deep linked owner prefix.
       final profile = ref.read(currentProfileProvider).value;
