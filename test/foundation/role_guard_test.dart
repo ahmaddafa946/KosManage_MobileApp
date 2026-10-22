@@ -5,7 +5,7 @@ import 'package:kos_manage_mobile/domain/models/app_role.dart';
 
 void main() {
   group('RoleGuard route access', () {
-    test('owner can access both owner and tenant routes', () {
+    test('owner can access owner and shared routes', () {
       expect(RoleGuard.canAccess(role: AppRole.owner, path: '/owner/rooms'), isTrue);
       expect(RoleGuard.canAccess(role: AppRole.owner, path: '/owner/tenants'), isTrue);
       expect(RoleGuard.canAccess(role: AppRole.owner, path: '/owner/payments'), isTrue);
@@ -22,12 +22,12 @@ void main() {
       expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/owner/dashboard'), isFalse);
     });
 
-    test('tenant can access public and tenant routes', () {
-      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/home'), isTrue);
-      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/settings'), isTrue);
-      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/profile'), isTrue);
-      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/tenant/bills'), isTrue);
-      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/tenant/help'), isTrue);
+    test('tenant is blocked from all routes in owner-only mobile app', () {
+      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/home'), isFalse);
+      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/settings'), isFalse);
+      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/profile'), isFalse);
+      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/tenant/bills'), isFalse);
+      expect(RoleGuard.canAccess(role: AppRole.tenant, path: '/tenant/help'), isFalse);
     });
 
     test('redirectPath redirects tenant away from owner routes to /home', () {
@@ -37,7 +37,11 @@ void main() {
       );
       expect(
         RoleGuard.resolveRedirect(role: AppRole.tenant, requestedPath: '/home'),
-        isNull,
+        '/home',
+      );
+      expect(
+        RoleGuard.resolveRedirect(role: AppRole.tenant, requestedPath: '/settings'),
+        '/home',
       );
       expect(
         RoleGuard.resolveRedirect(role: AppRole.owner, requestedPath: '/owner/rooms'),
@@ -50,8 +54,8 @@ void main() {
       expect(RoleGuard.canMutatePayments(AppRole.owner), isTrue);
     });
 
-    test('tenant can create own maintenance report', () {
-      expect(RoleGuard.canCreateMaintenanceReport(AppRole.tenant), isTrue);
+    test('only owner can create maintenance reports', () {
+      expect(RoleGuard.canCreateMaintenanceReport(AppRole.tenant), isFalse);
       expect(RoleGuard.canCreateMaintenanceReport(AppRole.owner), isTrue);
     });
   });
