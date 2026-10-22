@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/auth/role_guard.dart';
+import '../domain/models/app_role.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/auth/presentation/registration_page.dart';
 import '../features/home/presentation/home_gate_page.dart';
@@ -79,8 +80,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!isAuthenticated && !isPublicAuthRoute) return '/login';
       if (isAuthenticated && isPublicAuthRoute) return '/home';
 
-      // ponytail: role-aware redirect guard for any deep linked owner prefix.
+      // This mobile client is intentionally restricted to owner accounts.
       final profile = ref.read(currentProfileProvider).value;
+      if (profile != null &&
+          profile.role != AppRole.owner &&
+          state.matchedLocation != '/home') {
+        return '/home';
+      }
+
+      // Role-aware redirect guard for any deep-linked owner prefix.
       if (profile != null) {
         final redirectTarget = RoleGuard.resolveRedirect(
           role: profile.role,
