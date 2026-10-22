@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../home/presentation/home_gate_page.dart';
 import '../application/auth_controller.dart';
-import 'login_role.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -19,7 +18,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  String _selectedRole = 'owner';
 
   @override
   void dispose() {
@@ -43,20 +41,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       // Always resolve the profile for the newly authenticated session.
       ref.invalidate(currentProfileProvider);
       final freshProfile = await ref.read(currentProfileProvider.future);
-      final roleMessage = roleMismatchMessage(
-        selectedRole: _selectedRole,
-        actualRole: freshProfile.role.name,
-      );
-
-      if (roleMessage != null) {
-        // Do not leave a session active when the selected role is incorrect.
+      if (freshProfile.role.name != 'owner') {
         await ref.read(authControllerProvider.notifier).signOut();
         ref.invalidate(currentProfileProvider);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(roleMessage),
-            backgroundColor: AppTheme.ink,
+          const SnackBar(
+            content: Text('Aplikasi KosManage Mobile hanya untuk pemilik kos.'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -80,12 +71,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  void _useDemoAccount() {
-    setState(() => _selectedRole = 'owner');
-    _emailController.text = 'owner@kosmanage.dev';
-    _passwordController.text = 'KosManage!dev1';
-  }
-
   String _loginErrorMessage(Object error) {
     final text = error.toString().toLowerCase();
     if (text.contains('invalid login') ||
@@ -105,51 +90,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return 'Konfigurasi Supabase belum benar di perangkat ini.';
     }
     return 'Login gagal. Periksa kredensial dan koneksi.';
-  }
-
-  Widget _roleOption({
-    required String role,
-    required String label,
-  }) {
-    final selected = _selectedRole == role;
-
-    return Expanded(
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: 'Masuk sebagai $label',
-        child: Material(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            key: Key('login-role-$role'),
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => setState(() => _selectedRole = role),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: selected
-                    ? Border.all(
-                        color: AppTheme.border.withValues(alpha: 0.7),
-                      )
-                    : null,
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? AppTheme.brand : AppTheme.muted,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -322,19 +262,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0F1F5),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Row(
-                        children: [
-                          _roleOption(role: 'owner', label: 'Pemilik'),
-                          _roleOption(role: 'tenant', label: 'Penghuni'),
-                        ],
-                      ),
-                    ),
                     const SizedBox(height: 20),
                     const Text(
                       'Email',
@@ -458,18 +385,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 4),
                     Center(
-                      child: TextButton.icon(
-                        key: const Key('login-demo'),
-                        onPressed: isLoading ? null : _useDemoAccount,
-                        icon: const Icon(Icons.science_outlined, size: 16),
-                        label: const Text('Gunakan Akun Demo'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppTheme.muted,
-                          textStyle: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                      child: TextButton(
+                        key: const Key('login-register'),
+                        onPressed: isLoading ? null : () => context.push('/register'),
+                        child: const Text('Belum punya akun? Daftar sebagai pemilik'),
                       ),
                     ),
                   ],
