@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -24,6 +26,11 @@ jobs:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
 
       - name: Flutter version
         run: flutter --version
@@ -64,3 +71,10 @@ jobs:
 
       - name: Unit and widget tests
         run: flutter test
+
+      - name: Test WhatsApp billing logic
+        working-directory: supabase/functions
+        run: deno test whatsapp-billing whatsapp-webhook
+
+      - name: Type-check WhatsApp Edge Functions
+        run: deno check supabase/functions/whatsapp-billing/index.ts supabase/functions/whatsapp-billing-consent/index.ts supabase/functions/whatsapp-webhook/index.ts
