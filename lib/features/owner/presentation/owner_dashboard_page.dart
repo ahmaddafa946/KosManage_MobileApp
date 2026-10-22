@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../domain/models/owner_dashboard_data.dart';
 import '../../../domain/services/owner_display.dart';
 import '../application/owner_dashboard_provider.dart';
+import '../application/owner_data_refresh_provider.dart';
 
 class OwnerDashboardPage extends ConsumerWidget {
   const OwnerDashboardPage({super.key, this.onNavigateTab});
@@ -13,6 +14,7 @@ class OwnerDashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(ownerDataRefreshProvider);
     final dashboard = ref.watch(ownerDashboardProvider);
     return dashboard.when(
       loading: () => const Center(
