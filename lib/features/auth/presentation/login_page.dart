@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../home/presentation/home_gate_page.dart';
 import '../application/auth_controller.dart';
+import 'login_role.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -41,13 +42,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       // Always resolve the profile for the newly authenticated session.
       ref.invalidate(currentProfileProvider);
       final freshProfile = await ref.read(currentProfileProvider.future);
-      if (freshProfile.role.name != 'owner') {
+      final roleMessage = ownerOnlyLoginMessage(
+        actualRole: freshProfile.role.name,
+      );
+      if (roleMessage != null) {
         await ref.read(authControllerProvider.notifier).signOut();
         ref.invalidate(currentProfileProvider);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Aplikasi KosManage Mobile hanya untuk pemilik kos.'),
+            content: Text(roleMessage),
             behavior: SnackBarBehavior.floating,
           ),
         );
