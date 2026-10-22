@@ -5,6 +5,7 @@ import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
+import '../application/owner_data_refresh_provider.dart';
 
 class RoomsPage extends ConsumerStatefulWidget {
   const RoomsPage({super.key});
@@ -75,6 +76,7 @@ class _RoomsPageState extends ConsumerState<RoomsPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(ownerDataRefreshProvider);
     final repo = ref.watch(ownerRoomsRepositoryProvider);
     final scheme = Theme.of(context).colorScheme;
 

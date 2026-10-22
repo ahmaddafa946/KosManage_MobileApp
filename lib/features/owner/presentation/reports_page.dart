@@ -6,6 +6,7 @@ import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
+import '../application/owner_data_refresh_provider.dart';
 
 class ReportsPage extends ConsumerStatefulWidget {
   const ReportsPage({super.key});
@@ -15,7 +16,7 @@ class ReportsPage extends ConsumerStatefulWidget {
 }
 
 class _ReportsPageState extends ConsumerState<ReportsPage> {
-  late final Future<OwnerProperty> _propertyFuture;
+  late Future<OwnerProperty> _propertyFuture;
   Future<OwnerOperationalReport>? _operationalFuture;
   Future<List<OwnerMaintenanceReport>>? _maintenanceFuture;
   Future<OwnerFinancialReport>? _financialFuture;
@@ -48,7 +49,12 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   }
 
   Future<void> _refresh() async {
-    final property = await _propertyFuture;
+    ref.invalidate(ownerPropertyProvider);
+    final propertyFuture = ref.read(ownerPropertyProvider.future);
+    if (mounted) {
+      setState(() => _propertyFuture = propertyFuture);
+    }
+    final property = await propertyFuture;
     if (!mounted) return;
     setState(() {
       final repository = ref.read(ownerReportsRepositoryProvider);
@@ -93,6 +99,16 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(ownerDataRefreshProvider);
+    ref.listen(ownerDataRefreshProvider, (previous, next) {
+      final previousRevision = previous?.value;
+      final nextRevision = next.value;
+      if (previousRevision != null &&
+          nextRevision != null &&
+          nextRevision > previousRevision) {
+        _refresh();
+      }
+    });
     return FutureBuilder<OwnerProperty>(
       future: _propertyFuture,
       builder: (context, propertySnapshot) {

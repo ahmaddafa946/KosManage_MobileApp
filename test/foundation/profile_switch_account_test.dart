@@ -47,7 +47,8 @@ void main() {
       }
 
       await pumpGate();
-      expect(find.byType(TenantShellPage), findsOneWidget);
+      expect(find.text('Aplikasi ini khusus untuk pemilik kos.'), findsOneWidget);
+      expect(find.byType(TenantShellPage), findsNothing);
       expect(find.byType(OwnerShellPage), findsNothing);
 
       // Simulate logout + login as different user: session/user changes,

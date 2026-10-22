@@ -14,7 +14,7 @@ Repository ini sekarang memiliki:
 - Riverpod state management
 - GoRouter routing
 - Supabase Auth + profile/role routing
-- owner dan tenant navigation shell
+- owner-only navigation shell; tenant workspace is not exposed in mobile
 - konfigurasi Supabase via compile-time defines
 - unit + widget test foundation
 - GitHub Actions CI
@@ -25,8 +25,8 @@ Repository ini sekarang memiliki:
 Daftar berikut merangkum fitur yang sudah tersedia pada kode aplikasi saat ini. Kelengkapan alur tetap perlu divalidasi melalui pengujian di perangkat dan koneksi Supabase.
 
 ### Autentikasi dan tampilan umum
-- Login menggunakan email dan kata sandi melalui Supabase Auth.
-- Pengarahan halaman berdasarkan peran akun: pemilik kos (Owner) atau penghuni (Tenant).
+- Login dan registrasi email/kata sandi khusus pemilik kos melalui Supabase Auth.
+- Akun berperan tenant ditolak dari workspace mobile; tidak ada pilihan login tenant.
 - Pengelolaan sesi dan logout.
 - Navigasi mobile menggunakan bottom navigation.
 - Tema Material 3 dengan pilihan mode terang, gelap, atau mengikuti sistem.
@@ -42,7 +42,9 @@ Daftar berikut merangkum fitur yang sudah tersedia pada kode aplikasi saat ini. 
 - **Pemrosesan laporan maintenance:** memperbarui status melalui tahapan diajukan, diproses, selesai, dan ditutup.
 - **Format dan tampilan data:** komponen antarmuka mobile, indikator loading/error, konfirmasi tindakan penting, serta penyegaran daftar.
 
-### Fitur penghuni kos (Tenant)
+### Modul tenant lama (tidak ditampilkan di aplikasi mobile)
+
+Kode modul tenant lama masih berada di repository, tetapi rute dan aksesnya tidak ditawarkan oleh aplikasi mobile yang sekarang khusus untuk pemilik kos.
 - **Beranda penghuni:** ringkasan informasi pribadi terkait kos.
 - **Kamar saya:** akses informasi kamar yang terkait dengan akun penghuni.
 - **Tagihan dan riwayat pembayaran:** melihat informasi pembayaran milik penghuni serta alur pembayaran simulasi.

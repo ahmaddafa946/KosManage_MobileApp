@@ -9,7 +9,6 @@ import '../../../domain/models/app_role.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../owner/presentation/owner_shell_page.dart';
-import '../../tenant/presentation/tenant_shell_page.dart';
 
 /// Session lifecycle provider: emits new session object on sign-in/out
 /// so [currentProfileProvider] refetches instead of pinning old profile.
@@ -114,9 +113,52 @@ class HomeGatePage extends ConsumerWidget {
           case AppRole.owner:
             return OwnerShellPage(profile: userProfile);
           case AppRole.tenant:
-            return TenantShellPage(profile: userProfile);
+            return const _OwnerOnlyAccountNotice();
         }
       },
+    );
+  }
+}
+
+
+class _OwnerOnlyAccountNotice extends ConsumerWidget {
+  const _OwnerOnlyAccountNotice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('KosManage')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.admin_panel_settings_outlined, size: 48),
+              const SizedBox(height: 16),
+              const Text(
+                'Aplikasi ini khusus untuk pemilik kos.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Akun penghuni tidak dapat menggunakan aplikasi mobile pemilik.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () async {
+                  await ref.read(authControllerProvider.notifier).signOut();
+                  ref.invalidate(currentProfileProvider);
+                  if (context.mounted) context.go('/login');
+                },
+                child: const Text('Keluar'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
