@@ -7,9 +7,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/auth/role_guard.dart';
 import '../features/auth/presentation/login_page.dart';
+import '../features/auth/presentation/registration_page.dart';
 import '../features/home/presentation/home_gate_page.dart';
 import '../features/settings/presentation/settings_page.dart';
-import '../features/tenant/presentation/payment_flow.dart';
 
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
@@ -38,6 +38,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: refreshListenable,
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(path: '/register', builder: (context, state) => const RegistrationPage()),
       GoRoute(path: '/home', builder: (context, state) => const HomeGatePage()),
       GoRoute(
         path: '/settings',
@@ -60,31 +61,33 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
         builder: (context, state) => const HomeGatePage(),
       ),
-      GoRoute(
-        path: '/payment/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          return ActiveTransactionScreen(transactionId: id);
-        },
-      ),
     ],
     redirect: (context, state) {
       final isAuthenticated =
           Supabase.instance.client.auth.currentSession != null;
-      final isLogin = state.matchedLocation == '/login';
+      final isPublicAuthRoute =
+          state.matchedLocation == '/login' || state.matchedLocation == '/register';
 
-      if (!isAuthenticated && !isLogin) return '/login';
-      if (isAuthenticated && isLogin) return '/home';
+      if (!isAuthenticated && !isPublicAuthRoute) return '/login';
+      if (isAuthenticated && isPublicAuthRoute) return '/home';
 
-      // ponytail: role-aware redirect guard for any deep linked owner prefix.
-      final profile = ref.read(currentProfileProvider).value;
-      if (profile != null) {
-        final redirectTarget = RoleGuard.resolveRedirect(
-          role: profile.role,
-          requestedPath: state.matchedLocation,
-        );
-        if (redirectTarget != null && redirectTarget != state.matchedLocation) {
-          return redirectTarget;
+      // Do not apply profile/role redirects before authentication. In
+      // particular, a signed-out user must be allowed to stay on /login and
+      // /register; redirecting them to /home here creates /login <-> /home.
+      if (isAuthenticated) {
+        final profile = ref.read(currentProfileProvider).value;
+
+        // While the profile is loading, let /home render its loading state.
+        // Once loaded, HomeGatePage displays a clear notice for tenant users.
+        if (profile != null && state.matchedLocation != '/home') {
+          final redirectTarget = RoleGuard.resolveRedirect(
+            role: profile.role,
+            requestedPath: state.matchedLocation,
+          );
+          if (redirectTarget != null &&
+              redirectTarget != state.matchedLocation) {
+            return redirectTarget;
+          }
         }
       }
 

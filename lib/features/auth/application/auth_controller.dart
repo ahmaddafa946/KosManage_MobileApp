@@ -28,6 +28,25 @@ class AuthController extends AsyncNotifier<void> {
     }
   }
 
+  Future<void> signUp({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      await ref.read(authRepositoryProvider).signUp(
+            fullName: fullName,
+            email: email,
+            password: password,
+          );
+      state = const AsyncData(null);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      rethrow;
+    }
+  }
+
   Future<void> signOut() async {
     state = const AsyncLoading();
     try {

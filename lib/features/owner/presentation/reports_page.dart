@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/owner_reports_repository.dart';
 import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
+import '../../../domain/services/maintenance_naive_bayes.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
+import '../application/owner_data_refresh_provider.dart';
 
 class ReportsPage extends ConsumerStatefulWidget {
   const ReportsPage({super.key});
@@ -15,7 +17,7 @@ class ReportsPage extends ConsumerStatefulWidget {
 }
 
 class _ReportsPageState extends ConsumerState<ReportsPage> {
-  late final Future<OwnerProperty> _propertyFuture;
+  late Future<OwnerProperty> _propertyFuture;
   Future<OwnerOperationalReport>? _operationalFuture;
   Future<List<OwnerMaintenanceReport>>? _maintenanceFuture;
   Future<OwnerFinancialReport>? _financialFuture;
@@ -48,7 +50,12 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   }
 
   Future<void> _refresh() async {
-    final property = await _propertyFuture;
+    ref.invalidate(ownerPropertyProvider);
+    final propertyFuture = ref.read(ownerPropertyProvider.future);
+    if (mounted) {
+      setState(() => _propertyFuture = propertyFuture);
+    }
+    final property = await propertyFuture;
     if (!mounted) return;
     setState(() {
       final repository = ref.read(ownerReportsRepositoryProvider);
@@ -93,6 +100,16 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(ownerDataRefreshProvider);
+    ref.listen(ownerDataRefreshProvider, (previous, next) {
+      final previousRevision = previous?.value;
+      final nextRevision = next.value;
+      if (previousRevision != null &&
+          nextRevision != null &&
+          nextRevision > previousRevision) {
+        _refresh();
+      }
+    });
     return FutureBuilder<OwnerProperty>(
       future: _propertyFuture,
       builder: (context, propertySnapshot) {
@@ -637,6 +654,11 @@ class _MaintenanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    const classifier = MaintenanceNaiveBayes();
+    final prediction = classifier.predict(
+      title: report.title,
+      description: report.description,
+    );
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -668,6 +690,26 @@ class _MaintenanceCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   fontSize: 12, color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                Chip(
+                  avatar: const Icon(Icons.auto_awesome, size: 15),
+                  label: Text(
+                    'Naive Bayes: ${prediction.category} (${(prediction.confidence * 100).round()}%)',
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  labelStyle: const TextStyle(fontSize: 11),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Prediksi awal dari contoh data; periksa kembali sebelum menentukan tindakan.',
+              style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 6),
             Text(
