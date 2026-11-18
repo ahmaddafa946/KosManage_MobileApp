@@ -10,7 +10,8 @@ void main() {
       description: 'Air menetes dari saluran kamar mandi',
     );
 
-    expect(result.category, 'Plumbing');
+    expect(result.category, 'plumbing');
+    expect(result.needsReview, isFalse);
     expect(result.confidence, inInclusiveRange(0.0, 1.0));
   });
 
@@ -20,15 +21,15 @@ void main() {
       description: 'Listrik konslet dan ada bau terbakar',
     );
 
-    expect(result.category, 'Kelistrikan');
+    expect(result.category, 'electrical');
+    expect(result.needsReview, isFalse);
   });
 
-  test('returns a valid category for empty text without throwing', () {
+  test('does not assign a category when the report has no useful text', () {
     final result = classifier.predict(title: '', description: '');
 
-    expect(
-      ['Plumbing', 'Kelistrikan', 'AC/Elektronik', 'Kebersihan', 'Furnitur'],
-      contains(result.category),
-    );
+    expect(result.category, 'other');
+    expect(result.confidence, 0);
+    expect(result.needsReview, isTrue);
   });
 }
