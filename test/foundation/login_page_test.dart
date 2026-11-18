@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kos_manage_mobile/features/auth/presentation/login_page.dart';
 
 void main() {
-  testWidgets('login page exposes email, password, and demo controls', (
+  testWidgets('login page is owner-only and exposes registration', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -16,6 +16,8 @@ void main() {
     expect(find.byKey(const Key('login-email')), findsOneWidget);
     expect(find.byKey(const Key('login-password')), findsOneWidget);
     expect(find.byKey(const Key('login-submit')), findsOneWidget);
-    expect(find.byKey(const Key('login-demo')), findsOneWidget);
+    expect(find.byKey(const Key('login-register')), findsOneWidget);
+    expect(find.text('Penghuni'), findsNothing);
+    expect(find.byKey(const Key('login-demo')), findsNothing);
   });
 }

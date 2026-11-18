@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/owner_reports_repository.dart';
 import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
+import '../../../domain/services/maintenance_naive_bayes.dart';
+import '../../../domain/services/maintenance_svm.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
+import '../application/owner_data_refresh_provider.dart';
 
 class ReportsPage extends ConsumerStatefulWidget {
   const ReportsPage({super.key});
@@ -15,7 +18,7 @@ class ReportsPage extends ConsumerStatefulWidget {
 }
 
 class _ReportsPageState extends ConsumerState<ReportsPage> {
-  late final Future<OwnerProperty> _propertyFuture;
+  late Future<OwnerProperty> _propertyFuture;
   Future<OwnerOperationalReport>? _operationalFuture;
   Future<List<OwnerMaintenanceReport>>? _maintenanceFuture;
   Future<OwnerFinancialReport>? _financialFuture;
@@ -47,15 +50,92 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     });
   }
 
-  Future<void> _refresh() async {
-    final property = await _propertyFuture;
+  Future<void> _refresh({
+    bool refreshOperational = true,
+    bool refreshMaintenance = true,
+    bool refreshFinancial = true,
+  }) async {
+    // Read the provider's current future without invalidating it. In particular,
+    // a maintenance category edit must not reload the owner/property tree.
+    final propertyFuture = ref.read(ownerPropertyProvider.future);
+    final property = await propertyFuture;
     if (!mounted) return;
+
+    final repository = ref.read(ownerReportsRepositoryProvider);
+    final operationalFuture = refreshOperational
+        ? repository.getOperationalReport(property.id)
+        : null;
+    final maintenanceFuture = refreshMaintenance
+        ? repository.getMaintenanceReports(property.id)
+        : null;
+    final financialFuture = refreshFinancial
+        ? repository.getFinancialReport(property.id, months: _months)
+        : null;
+
     setState(() {
-      final repository = ref.read(ownerReportsRepositoryProvider);
-      _operationalFuture = repository.getOperationalReport(property.id);
-      _maintenanceFuture = repository.getMaintenanceReports(property.id);
-      _financialFuture = repository.getFinancialReport(property.id, months: _months);
+      _propertyFuture = propertyFuture;
+      if (operationalFuture != null) {
+        _operationalFuture = operationalFuture;
+      }
+      if (maintenanceFuture != null) {
+        _maintenanceFuture = maintenanceFuture;
+      }
+      if (financialFuture != null) {
+        _financialFuture = financialFuture;
+      }
     });
+
+    final pending = <Future<void>>[
+      if (operationalFuture != null) operationalFuture.then<void>((_) {}),
+      if (maintenanceFuture != null) maintenanceFuture.then<void>((_) {}),
+      if (financialFuture != null) financialFuture.then<void>((_) {}),
+    ];
+    await Future.wait(pending);
+  }
+
+  void _showActionError(Object error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_friendlyError(error)),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
+
+  Future<void> _setMaintenanceCategory(
+    OwnerMaintenanceReport report,
+    String category,
+  ) async {
+    try {
+      await ref
+          .read(ownerReportsRepositoryProvider)
+          .updateMaintenanceCategory(report.id, category);
+    } catch (error) {
+      _showActionError(error);
+      return;
+    }
+
+    // INSERT-only Realtime intentionally does not respond to this UPDATE.
+    // Refresh just the maintenance list so the category label and dropdown
+    // immediately reflect the saved value without reloading finance/property.
+    try {
+      await _refresh(
+        refreshOperational: false,
+        refreshMaintenance: true,
+        refreshFinancial: false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Kategori tersimpan, tetapi daftar belum berhasil diperbarui. Tarik layar untuk mencoba lagi.',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 
   Future<void> _setMaintenanceStatus(
@@ -66,12 +146,24 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       await ref
           .read(ownerReportsRepositoryProvider)
           .updateMaintenanceStatus(report.id, status);
-      await _refresh();
+    } catch (error) {
+      _showActionError(error);
+      return;
+    }
+
+    try {
+      await _refresh(
+        refreshOperational: true,
+        refreshMaintenance: true,
+        refreshFinancial: false,
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_friendlyError(error)),
+          content: Text(
+            'Status tersimpan, tetapi daftar belum berhasil diperbarui. Tarik layar untuk mencoba lagi.',
+          ),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -93,6 +185,16 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(ownerDataRefreshProvider);
+    ref.listen(ownerDataRefreshProvider, (previous, next) {
+      final previousRevision = previous?.value;
+      final nextRevision = next.value;
+      if (previousRevision != null &&
+          nextRevision != null &&
+          nextRevision > previousRevision) {
+        _refresh();
+      }
+    });
     return FutureBuilder<OwnerProperty>(
       future: _propertyFuture,
       builder: (context, propertySnapshot) {
@@ -159,6 +261,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                   nextStatuses: _nextStatuses,
                   onStatusChanged: (value) => setState(() => _status = value),
                   onAdvance: _setMaintenanceStatus,
+                  onCategoryChanged: _setMaintenanceCategory,
                   onRetry: _refresh,
                 )
               else
@@ -193,6 +296,7 @@ class _OperationalView extends StatelessWidget {
     required this.nextStatuses,
     required this.onStatusChanged,
     required this.onAdvance,
+    required this.onCategoryChanged,
     required this.onRetry,
   });
 
@@ -203,6 +307,7 @@ class _OperationalView extends StatelessWidget {
   final List<(String, String)> Function(String) nextStatuses;
   final ValueChanged<String> onStatusChanged;
   final Future<void> Function(OwnerMaintenanceReport, String) onAdvance;
+  final Future<void> Function(OwnerMaintenanceReport, String) onCategoryChanged;
   final VoidCallback onRetry;
 
   @override
@@ -318,6 +423,8 @@ class _OperationalView extends StatelessWidget {
                         report: item,
                         actions: nextStatuses(item.status),
                         onAdvance: (next) => onAdvance(item, next),
+                        onCategoryChanged: (category) =>
+                            onCategoryChanged(item, category),
                       ),
                     ),
                   ),
@@ -628,15 +735,46 @@ class _MaintenanceCard extends StatelessWidget {
     required this.report,
     required this.actions,
     required this.onAdvance,
+    required this.onCategoryChanged,
   });
 
   final OwnerMaintenanceReport report;
   final List<(String, String)> actions;
   final Future<void> Function(String) onAdvance;
+  final Future<void> Function(String) onCategoryChanged;
+
+  static const _categories = <(String, String)>[
+    ('AC', 'AC'),
+    ('electrical', 'Listrik'),
+    ('plumbing', 'Plumbing'),
+    ('furniture', 'Furnitur'),
+    ('internet', 'Internet'),
+    ('other', 'Lainnya'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    const naiveBayes = MaintenanceNaiveBayes();
+    const svm = MaintenanceSvm();
+    final naivePrediction = naiveBayes.predict(
+      title: report.title,
+      description: report.description,
+    );
+    final svmPrediction = svm.predict(
+      title: report.title,
+      description: report.description,
+    );
+    final bothInformative =
+        !naivePrediction.needsReview && !svmPrediction.needsReview;
+    final modelsAgree =
+        bothInformative && naivePrediction.category == svmPrediction.category;
+    final currentCategory = _categories.any(
+      (category) => category.$1 == report.category,
+    )
+        ? report.category
+        : 'other';
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -669,7 +807,70 @@ class _MaintenanceCard extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12, color: scheme.onSurfaceVariant),
             ),
+            const SizedBox(height: 10),
+            Text(
+              'Rekomendasi klasifikasi',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                Chip(
+                  avatar: const Icon(Icons.auto_awesome, size: 15),
+                  label: Text(
+                    'Naive Bayes: ${maintenanceCategoryLabel(naivePrediction.category)}',
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  labelStyle: const TextStyle(fontSize: 11),
+                ),
+                Chip(
+                  avatar: const Icon(Icons.analytics_outlined, size: 15),
+                  label: Text(
+                    'SVM: ${maintenanceCategoryLabel(svmPrediction.category)}',
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  labelStyle: const TextStyle(fontSize: 11),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              !bothInformative
+                  ? 'Teks belum cukup informatif. Periksa dan tentukan kategori secara manual.'
+                  : modelsAgree
+                      ? 'Kedua model memberikan rekomendasi yang sama. Tetap periksa sebelum menyimpan.'
+                      : 'Prediksi kedua model berbeda. Periksa laporan dan tentukan kategori secara manual.',
+              style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: currentCategory,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Kategori laporan (dapat dikoreksi)',
+                isDense: true,
+              ),
+              items: _categories
+                  .map(
+                    (category) => DropdownMenuItem<String>(
+                      value: category.$1,
+                      child: Text(category.$2),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (category) {
+                if (category != null && category != report.category) {
+                  onCategoryChanged(category);
+                }
+              },
+            ),
+            const SizedBox(height: 10),
             Text(
               report.description,
               maxLines: 3,

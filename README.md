@@ -14,7 +14,7 @@ Repository ini sekarang memiliki:
 - Riverpod state management
 - GoRouter routing
 - Supabase Auth + profile/role routing
-- owner dan tenant navigation shell
+- owner-only navigation shell; tenant workspace is not exposed in mobile
 - konfigurasi Supabase via compile-time defines
 - unit + widget test foundation
 - GitHub Actions CI
@@ -25,8 +25,8 @@ Repository ini sekarang memiliki:
 Daftar berikut merangkum fitur yang sudah tersedia pada kode aplikasi saat ini. Kelengkapan alur tetap perlu divalidasi melalui pengujian di perangkat dan koneksi Supabase.
 
 ### Autentikasi dan tampilan umum
-- Login menggunakan email dan kata sandi melalui Supabase Auth.
-- Pengarahan halaman berdasarkan peran akun: pemilik kos (Owner) atau penghuni (Tenant).
+- Login dan registrasi email/kata sandi khusus pemilik kos melalui Supabase Auth.
+- Akun berperan tenant ditolak dari workspace mobile; tidak ada pilihan login tenant.
 - Pengelolaan sesi dan logout.
 - Navigasi mobile menggunakan bottom navigation.
 - Tema Material 3 dengan pilihan mode terang, gelap, atau mengikuti sistem.
@@ -37,12 +37,15 @@ Daftar berikut merangkum fitur yang sudah tersedia pada kode aplikasi saat ini. 
 - **Manajemen kamar:** melihat daftar kamar, mencari dan memfilter kamar, menambah/mengubah data kamar, serta menghapus kamar dengan pemeriksaan penghuni aktif.
 - **Manajemen penghuni:** melihat, mencari, memfilter, menambah, mengubah, menonaktifkan/checkout, dan menghapus data penghuni.
 - **Pembayaran:** melihat catatan pembayaran, mencari berdasarkan nama penghuni/kamar, memfilter periode/status/metode, serta menambah, mengubah, dan menghapus catatan pembayaran.
-- **Laporan operasional:** ringkasan kondisi operasional dan laporan maintenance.
+- **Laporan operasional:** ringkasan kondisi operasional dan laporan maintenance, termasuk rekomendasi klasifikasi kategori dengan Naive Bayes dan SVM.
 - **Laporan keuangan:** ringkasan tagihan, pembayaran, dan tunggakan sesuai data yang tersedia.
-- **Pemrosesan laporan maintenance:** memperbarui status melalui tahapan diajukan, diproses, selesai, dan ditutup.
+- **Pemrosesan laporan maintenance:** memperbarui status melalui tahapan diajukan, diproses, selesai, dan ditutup; pemilik dapat mengoreksi kategori laporan secara manual.
+- **Smart Maintenance Classification (prototype):** menampilkan rekomendasi kategori dari Naive Bayes dan linear SVM berdasarkan judul serta deskripsi laporan. Prediksi tidak mengubah data secara otomatis dan tetap perlu diverifikasi pemilik.
 - **Format dan tampilan data:** komponen antarmuka mobile, indikator loading/error, konfirmasi tindakan penting, serta penyegaran daftar.
 
-### Fitur penghuni kos (Tenant)
+### Modul tenant lama (tidak ditampilkan di aplikasi mobile)
+
+Kode modul tenant lama masih berada di repository, tetapi rute dan aksesnya tidak ditawarkan oleh aplikasi mobile yang sekarang khusus untuk pemilik kos.
 - **Beranda penghuni:** ringkasan informasi pribadi terkait kos.
 - **Kamar saya:** akses informasi kamar yang terkait dengan akun penghuni.
 - **Tagihan dan riwayat pembayaran:** melihat informasi pembayaran milik penghuni serta alur pembayaran simulasi.
@@ -207,3 +210,7 @@ Setelah workflow build Android berhasil, APK terbaru dapat diunduh langsung mela
 **[Download KosManage.apk](https://github.com/ahmaddafa946/KosManage_MobileApp/releases/latest/download/KosManage.apk)**
 
 Tautan ini mengarah ke APK pada GitHub Release terbaru. Build otomatis memerlukan repository variable `SUPABASE_URL` dan repository secret `SUPABASE_ANON_KEY` yang sudah diatur di Settings → Secrets and variables → Actions. Jika tautan belum tersedia, jalankan workflow **Build Android APK** dari tab Actions dan pastikan build berhasil.
+
+
+### Batasan klasifikasi maintenance
+Model klasifikasi menggunakan starter examples buatan untuk pengembangan, bukan dataset laporan pengguna yang telah divalidasi. Hasil Naive Bayes dan SVM adalah rekomendasi, bukan keputusan otomatis. Pemilik harus memeriksa hasil dan dapat mengubah kategori laporan secara manual. Lihat [panduan Smart Maintenance Classification](docs/MAINTENANCE-CLASSIFICATION.md) sebelum mengklaim akurasi model.

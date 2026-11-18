@@ -5,6 +5,7 @@ import '../../../domain/models/owner_management.dart';
 import '../../../domain/services/owner_display.dart';
 import '../../shared/presentation/app_ui.dart';
 import '../application/owner_module_providers.dart';
+import '../application/owner_data_refresh_provider.dart';
 
 class PaymentsPage extends ConsumerStatefulWidget {
   const PaymentsPage({super.key});
@@ -93,6 +94,7 @@ class _PaymentsPageState extends ConsumerState<PaymentsPage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(ownerDataRefreshProvider);
     final paymentsRepo = ref.watch(ownerPaymentsRepositoryProvider);
     final scheme = Theme.of(context).colorScheme;
 

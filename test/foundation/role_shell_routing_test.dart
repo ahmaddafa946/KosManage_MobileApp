@@ -63,7 +63,7 @@ void main() {
     expect(find.byType(TenantShellPage), findsNothing);
   });
 
-  testWidgets('HomeGate routes tenant profile to TenantShellPage', (
+  testWidgets('HomeGate blocks tenant profile from the owner mobile app', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -77,7 +77,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(TenantShellPage), findsOneWidget);
+    expect(find.text('Aplikasi ini khusus untuk pemilik kos.'), findsOneWidget);
+    expect(find.byType(TenantShellPage), findsNothing);
     expect(find.byType(OwnerShellPage), findsNothing);
   });
 

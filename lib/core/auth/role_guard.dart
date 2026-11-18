@@ -21,17 +21,16 @@ abstract final class RoleGuard {
   /// Evaluates whether a [role] has permission to navigate to [path].
   static bool canAccess({required AppRole role, required String path}) {
     if (role == AppRole.owner) return true;
-    if (isOwnerRoute(path)) return false;
-    return true;
+    return false;
   }
 
   /// Capability guard: tenant payments are read-only.
   /// Only owner may create/update/delete official payment records.
   static bool canMutatePayments(AppRole role) => role == AppRole.owner;
 
-  /// Capability guard: tenant may only create own maintenance report.
+  /// This mobile app is owner-only; maintenance actions are owner-only too.
   static bool canCreateMaintenanceReport(AppRole role) =>
-      role == AppRole.owner || role == AppRole.tenant;
+      role == AppRole.owner;
 
   /// Resolves redirection destination when [requestedPath] violates role bounds.
   /// Returns null when access is allowed.

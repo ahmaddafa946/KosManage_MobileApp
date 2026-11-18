@@ -1,12 +1,6 @@
-/// Returns a user-facing message when the selected login role does not
-/// match the role assigned to the account in the application's profile.
-String? roleMismatchMessage({
-  required String selectedRole,
-  required String actualRole,
-}) {
-  if (selectedRole == actualRole) return null;
-
-  final actualRoleLabel = actualRole == 'tenant' ? 'penghuni' : 'pemilik kos';
-  return 'Akun ini terdaftar sebagai $actualRoleLabel. '
-      'Pilih tab yang sesuai, lalu coba lagi.';
+/// Returns a user-facing message when an account is not allowed to use the
+/// owner-only mobile application.
+String? ownerOnlyLoginMessage({required String actualRole}) {
+  if (actualRole == 'owner') return null;
+  return 'Aplikasi KosManage Mobile hanya untuk pemilik kos.';
 }

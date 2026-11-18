@@ -11,6 +11,8 @@ abstract interface class OwnerReportsRepository {
 
   Future<void> updateMaintenanceStatus(String reportId, String status);
 
+  Future<void> updateMaintenanceCategory(String reportId, String category);
+
   Future<OwnerFinancialReport> getFinancialReport(
     String propertyId, {
     required int months,
@@ -98,6 +100,17 @@ class SupabaseOwnerReportsRepository implements OwnerReportsRepository {
     await _client
         .from('maintenance_reports')
         .update({'status': status})
+        .eq('id', reportId);
+  }
+
+  @override
+  Future<void> updateMaintenanceCategory(
+    String reportId,
+    String category,
+  ) async {
+    await _client
+        .from('maintenance_reports')
+        .update({'category': category})
         .eq('id', reportId);
   }
 
