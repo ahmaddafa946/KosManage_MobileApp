@@ -121,7 +121,7 @@ class MaintenanceSvm {
       var step = 0;
 
       for (var epoch = 0; epoch < _epochs; epoch++) {
-        random.shuffle(order);
+        order.shuffle(random);
         for (final documentIndex in order) {
           step++;
           final label =
