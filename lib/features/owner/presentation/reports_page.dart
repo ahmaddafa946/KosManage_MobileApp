@@ -50,20 +50,57 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     });
   }
 
-  Future<void> _refresh() async {
-    ref.invalidate(ownerPropertyProvider);
+  Future<void> _refresh({
+    bool refreshOperational = true,
+    bool refreshMaintenance = true,
+    bool refreshFinancial = true,
+  }) async {
+    // Read the provider's current future without invalidating it. In particular,
+    // a maintenance category edit must not reload the owner/property tree.
     final propertyFuture = ref.read(ownerPropertyProvider.future);
-    if (mounted) {
-      setState(() => _propertyFuture = propertyFuture);
-    }
     final property = await propertyFuture;
     if (!mounted) return;
+
+    final repository = ref.read(ownerReportsRepositoryProvider);
+    final operationalFuture = refreshOperational
+        ? repository.getOperationalReport(property.id)
+        : null;
+    final maintenanceFuture = refreshMaintenance
+        ? repository.getMaintenanceReports(property.id)
+        : null;
+    final financialFuture = refreshFinancial
+        ? repository.getFinancialReport(property.id, months: _months)
+        : null;
+
     setState(() {
-      final repository = ref.read(ownerReportsRepositoryProvider);
-      _operationalFuture = repository.getOperationalReport(property.id);
-      _maintenanceFuture = repository.getMaintenanceReports(property.id);
-      _financialFuture = repository.getFinancialReport(property.id, months: _months);
+      _propertyFuture = propertyFuture;
+      if (operationalFuture != null) {
+        _operationalFuture = operationalFuture;
+      }
+      if (maintenanceFuture != null) {
+        _maintenanceFuture = maintenanceFuture;
+      }
+      if (financialFuture != null) {
+        _financialFuture = financialFuture;
+      }
     });
+
+    final pending = <Future<void>>[
+      if (operationalFuture != null) operationalFuture.then<void>((_) {}),
+      if (maintenanceFuture != null) maintenanceFuture.then<void>((_) {}),
+      if (financialFuture != null) financialFuture.then<void>((_) {}),
+    ];
+    await Future.wait(pending);
+  }
+
+  void _showActionError(Object error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_friendlyError(error)),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
   }
 
   Future<void> _setMaintenanceCategory(
@@ -74,12 +111,27 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       await ref
           .read(ownerReportsRepositoryProvider)
           .updateMaintenanceCategory(report.id, category);
-      await _refresh();
+    } catch (error) {
+      _showActionError(error);
+      return;
+    }
+
+    // INSERT-only Realtime intentionally does not respond to this UPDATE.
+    // Refresh just the maintenance list so the category label and dropdown
+    // immediately reflect the saved value without reloading finance/property.
+    try {
+      await _refresh(
+        refreshOperational: false,
+        refreshMaintenance: true,
+        refreshFinancial: false,
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_friendlyError(error)),
+          content: Text(
+            'Kategori tersimpan, tetapi daftar belum berhasil diperbarui. Tarik layar untuk mencoba lagi.',
+          ),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -94,12 +146,24 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
       await ref
           .read(ownerReportsRepositoryProvider)
           .updateMaintenanceStatus(report.id, status);
-      await _refresh();
+    } catch (error) {
+      _showActionError(error);
+      return;
+    }
+
+    try {
+      await _refresh(
+        refreshOperational: true,
+        refreshMaintenance: true,
+        refreshFinancial: false,
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_friendlyError(error)),
+          content: Text(
+            'Status tersimpan, tetapi daftar belum berhasil diperbarui. Tarik layar untuk mencoba lagi.',
+          ),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
